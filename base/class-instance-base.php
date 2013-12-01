@@ -33,9 +33,10 @@ abstract class Exo_Instance_Base extends Exo_Base {
   private static $_instance_hooks = array();
 
   static function on_load() {
+    /**
+     * @todo Change these to use self::add_static_action() once we test that and get it working.
+     */
     add_action( 'after_setup_theme', array( __CLASS__, '_after_setup_theme_9' ), 9 );
-    add_action( 'exo_fixup_mixins', array( __CLASS__, '_exo_fixup_mixins' ) );
-    //self::add_static_action( 'after_setup_theme', 9 );
   }
 
   /**
@@ -46,7 +47,7 @@ abstract class Exo_Instance_Base extends Exo_Base {
      * @todo Add conditionals to load mixins when not in dev runmode
      *       and to generate fixed PHP/JSON code when in dev runmode.
      */
-    do_action( 'exo_fixup_mixins' );
+    self::_exo_fixup_mixins();
   }
   /**
    *
@@ -120,16 +121,12 @@ abstract class Exo_Instance_Base extends Exo_Base {
    *
    */
   static function _exo_fixup_mixins() {
+    /**
+     * @todo I feel this this could be done with a more efficient algorithm,
+     *       but it's beyond me to improve at this point. -mikeschinkel
+     */
     self::_fixup_mixins( self::_semi_normalize_mixins() );
     self::_assign_callable_templates();
-  }
-
-  static function _get_mixedin_methods( $owner_class ) {
-    $methods = array();
-    foreach( self::$_mixins[$owner_class]->mixins as $mixin_class => $mixin ) {
-      $methods = array_merge( $methods, self::_get_mixedin_methods( $mixin_class ) );
-    }
-    return $methods;
   }
 
   /**
@@ -143,20 +140,15 @@ abstract class Exo_Instance_Base extends Exo_Base {
    * @return mixed
    */
   static function _fixup_mixins( $registered_mixins ) {
-    static $CLASS_METHOD_OPTIONS = array(
-      'own' => true,
-      'public' => true,
-      'instance' => true,
-    );
     foreach( $registered_mixins as $class_name => $mixin ) {
       if ( is_array( $mixin ) ) {
         $var_name = false;
         $mixins = self::_fixup_mixins( $mixin );
       } else {
         /*
-         * Getting SLUG here was done inline vs. calling Exo::get_class_slug() for performance reasons.
+         * Getting ALIAS here was done inline vs. calling Exo::get_class_alias() for performance reasons.
          */
-        $var_name = defined( $constant_ref = "{$class_name}::SLUG" ) ? constant( $constant_ref ) : false;
+        $var_name = defined( $constant_ref = "{$class_name}::ALIAS" ) ? constant( $constant_ref ) : false;
         $mixins = array();
       }
       if ( isset( self::$_mixins[$class_name] ) && is_object( self::$_mixins[$class_name] ) ) {
@@ -172,7 +164,11 @@ abstract class Exo_Instance_Base extends Exo_Base {
           'var_name' => $var_name,
           'mixins' => $mixins,
           'parent_class' => get_parent_class( $class_name ),
-          'method_names' => _Exo_Php_Helpers::get_class_methods( $class_name, $CLASS_METHOD_OPTIONS ),
+          'method_names' => _Exo_Php_Helpers::get_class_methods( $class_name, array(
+            'own' => true,
+            'public' => true,
+            'instance' => true,
+          )),
           'owners' => array(),
           'callable_templates' => array(
             'mixins' => array(),

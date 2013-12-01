@@ -34,10 +34,6 @@ abstract class Exo_Static_Base extends Exo_Base {
    * Fixup the registered helpers after the theme loads but before the default priority 10 hook after_setup_theme.
    */
   static function _plugins_loaded_9() {
-    static $CLASS_METHOD_FILTERS = array(
-      'public' => true,
-      'static' => true,
-    );
     foreach( self::$_helpers as $helper ) {
       list( $class_name, $method_name, $alt_method_name ) = $helper;
       if ( is_object( $class_name ) ) {
@@ -55,7 +51,7 @@ abstract class Exo_Static_Base extends Exo_Base {
           self::$_helper_callables[$alt_method_name] = array( $instance, $method_name );
         }
       } else {
-        foreach ( _Exo_Php_Helpers::get_class_methods( $class_name, $CLASS_METHOD_FILTERS ) as $method_name ) {
+        foreach ( _Exo_Php_Helpers::get_class_methods( $class_name, array( 'public' => true, 'static' => true, ) ) as $method_name ) {
           self::$_helper_callables[$method_name] = array( $instance, $method_name );
         }
       }

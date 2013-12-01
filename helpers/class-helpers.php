@@ -13,8 +13,8 @@ class _Exo_Helpers extends Exo_Helpers_Base {
    *
    * @return bool|mixed
    */
-  static function get_class_slug( $class_name = false ) {
-    return self::get_class_constant( 'SLUG', $class_name );
+  static function get_class_alias( $class_name = false ) {
+    return self::get_class_constant( 'ALIAS', $class_name );
   }
 
   /**
