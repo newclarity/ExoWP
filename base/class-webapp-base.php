@@ -1,8 +1,8 @@
 <?php
 
 /**
- * Class Exo_Web_App_Base
+ * Class Exo_Webapp_Base
  *
  */
-abstract class Exo_Webapp_Base extends Exo_Static_Base {
+abstract class Exo_Webapp_Base extends Exo_Main_Base {
 }

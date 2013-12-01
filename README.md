@@ -32,6 +32,8 @@ Most other WordPress MVC libraries we've have been attempts to transform WordPre
 
 WordPress transformed _makes WordPress fundamentally not WordPress_. Transforming WordPress to MVC will never work compatibly with the larger WordPress ecosystem of plugins and themes; those attempts have unfortunately created fringe solutions, at best.
 
+Instead of transforming WordPress, **Exo is pure-WordPress** at its core, Exo **simply adds structure** around WordPress that allows a developer to build more robust applications faster than he or she could using defacto-standard WordPress plugin and theme development techniques.
+
 ####Exo is WordPress-ish
 Using a term we first heard coined by [Taras Mankovski](http://www.linkedin.com/in/tarasm), Exo is _WordPress-ish._  Whenever possible, WordPress attempts to behave like WordPress by augmenting it, not transforming it.  
 
@@ -39,9 +41,11 @@ WordPress developers, designers and site builders should be able to use as littl
 
  
 ###Exo's Controller
-The _"C"_ in the MVC architecture refers to [a Controller component](http://stackoverflow.com/questions/1015813/what-goes-into-the-controller-in-mvc) and in Exo the controller is WordPress itself. 
+The _"C"_ in the MVC architecture refers to [a Controller component](http://stackoverflow.com/questions/1015813/what-goes-into-the-controller-in-mvc) and in Exo **the controller is WordPress itself**. 
 
-WordPress already routes URLs, handles user permissions, loads _"views" (a.k.a. "template files" in non-augmented WordPress vernacular)_, and WordPress coordinates generating the HTML for the HTTP response given each HTTP request. So there's no reason Exo needed to implement it's own controller; WordPress already handles that part just fine. 
+WordPress already routes URLs, handles user permissions, loads _"views" (a.k.a. "template files" in non Exo-augmented WordPress vernacular)_, and WordPress coordinates generating the HTML for each HTTP response given each HTTP request. 
+
+So there's no reason Exo needed to implement it's own controller; WordPress already handles that part just fine. 
 
 ####Exo is Model-View-WordPress
 Exo instead handles the [models, views](http://en.wikipedia.org/wiki/Model–view–controller), [collections](http://en.wikipedia.org/wiki/Collection_(abstract_data_type) and [mixins](http://en.wikipedia.org/wiki/Mixin). Because of this, we like to think of Exo as a variant of MVC, a varient we like to call **MVWP**, an initialism for _"Model-View-WordPress."_
@@ -52,7 +56,7 @@ Exo also augments [WordPress' URL routing](http://ruslanbes.com/devblog/2013/04/
 ### Exo is Object-Oriented, Of Course
 Exo is [highly object-oriented](http://tommcfarlin.com/object-oriented-wordpress-plugin/), as would be expected of a solid MVC framework. And by object-oriented, we don't mean [just using classes as namespaces](http://wp.tutsplus.com/tutorials/plugins/two-ways-to-develop-wordpress-plugins-object-oriented-progamming/), we mean using and leveraging the benefits of object orientation in all it's glory.
 
-But don't worry, **you don't have to learn Exo's OOP all at once**. Just use as much as you are comfortable with and grow your skills over time.
+But don't worry, **you don't have to learn Exo's OOP all at once** _(or even at all if you only want to create themes.)_ Just use as much as you are comfortable with and grow your skills over time.
 
 ##Exo's Benefits
 The benefits to learning and using Exo when building WordPress web apps are:
