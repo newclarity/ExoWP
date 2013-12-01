@@ -7,7 +7,7 @@ An MVC Exoskeleton for WordPress
 
 ##Overview
 ###Exo's Purpose
-Exo is an [MVC layer](http://en.wikipedia.org/wiki/Model–view–controller) for WordPress to empower programmers to create complex web apps using WordPress without prematurely reaching the point of _"too much complexity for WordPress to handle."_
+Exo is an [MVC Foundation Layer](http://en.wikipedia.org/wiki/Model–view–controller) for WordPress to empower programmers to create complex web apps using WordPress without prematurely reaching the point of _"too much complexity for WordPress to handle."_
 
 With Exo, more programmers can say that _"WordPress is the right tool for the job"_ than they could otherwise say without Exo.
 
