@@ -33,11 +33,13 @@ abstract class Exo_Base {
     if ( is_string( $method_or_priority ) ) {
       $callable = array( $class = get_called_class(), $method_or_priority );
     } else {
-      $callable = array( $class = get_called_class(), $filter );
-      if ( is_numeric( $callable_or_priority ) ) {
-        $priority = $callable_or_priority;
+      $method = 10 == $priority ? $filter : "{$filter}_{$priority}";
+      $callable = array( $class = get_called_class(), $method );
+      if ( is_numeric( $method_or_priority ) ) {
+        $priority = $method_or_priority;
       }
     }
-    return add_filter( "{$class}::{$filter}()", $callable, $priority );
+    return add_filter( "{$class}::{$method}()", $callable, $priority );
   }
+
 }

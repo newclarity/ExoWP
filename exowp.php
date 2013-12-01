@@ -1,39 +1,26 @@
 <?php
 
-require(__DIR__ . '/classes/base/class-base.php');
-require(__DIR__ . '/classes/base/class-static-base.php');
-require(__DIR__ . '/classes/base/class-helpers-base.php');
-require(__DIR__ . '/classes/base/class-delegating-base.php');
-require(__DIR__ . '/classes/base/class-instance-base.php');
-require(__DIR__ . '/classes/base/class-singleton-base.php');
-require(__DIR__ . '/classes/base/class-model-base.php');
-require(__DIR__ . '/classes/base/class-collection-base.php');
-require(__DIR__ . '/classes/base/class-view-base.php');
-require(__DIR__ . '/classes/base/class-mixin-base.php');
+require(__DIR__ . '/base/class-base.php');
+require(__DIR__ . '/base/class-instance-base.php');
+require(__DIR__ . '/base/class-static-base.php');
+require(__DIR__ . '/base/class-helpers-base.php');
+require(__DIR__ . '/base/class-webapp-base.php');
+require(__DIR__ . '/base/class-model-base.php');
+require(__DIR__ . '/base/class-collection-base.php');
+require(__DIR__ . '/base/class-view-base.php');
+require(__DIR__ . '/base/class-mixin-base.php');
+require(__DIR__ . '/base/class-post-base.php');
 
 /**
  * Class Exo
  *
- * @foundin Exo_Singleton_Base
- * @method static void register_helper( string $class_name, string $method_name = false, string $alt_method_name = false )
- *
- * @foundin Exo_Mixin_Helpers
- * @method static void register_mixin( string $owner_class, string $mixin_class, string $mixin_name  )
+ * @mixin _Exo_Helpers
+ * @mixin _Exo_Php_Helpers
  *
  */
-class Exo extends Exo_Singleton_Base {}
+class Exo extends Exo_Webapp_Base {}
 
-/**
- * Class _Exo
- */
-class _Exo_Skeleton extends Exo_Delegating_Base {
-
-  /**
-   * Initialize _Exo() instance
-   */
-  static function on_load() {
-    Exo::$skeleton = new _Exo_Skeleton();
-  }
-
-}
-_Exo_Skeleton::on_load();
+require(__DIR__ . '/helpers/class-php-helpers.php');
+require(__DIR__ . '/helpers/class-php-helpers.on-load.php');
+require(__DIR__ . '/helpers/class-helpers.php');
+require(__DIR__ . '/helpers/class-helpers.on-load.php');
