@@ -49,6 +49,7 @@ abstract class Exo_Instance_Base extends Exo_Base {
      */
     self::_exo_fixup_mixins();
   }
+
   /**
    *
    */
@@ -99,9 +100,6 @@ abstract class Exo_Instance_Base extends Exo_Base {
     return $mixin;
   }
 
-  /**
-   * Mixin a class to the called class.
-   */
   /**
    * @param string $mixin_class Class to mixin to the calling class.
    * @param bool|string $mixin_var Variable/array element name for the mixin instance.
@@ -322,8 +320,13 @@ abstract class Exo_Instance_Base extends Exo_Base {
   }
 
   /**
+   * This is where the mixin magic happens!
+   *
+   * Call the mixin methods or owner methods if the mixin or owner methods exist.
+   *
    * @param string $method_name
    * @param array $args
+   *
    * @return mixed
    */
   function __call( $method_name, $args ) {
@@ -331,9 +334,20 @@ abstract class Exo_Instance_Base extends Exo_Base {
     if ( isset( self::$_mixins[$class_name = get_class( $this )]->callable_templates['mixins'][$method_name] ) ) {
       /**
        * We have a mixin instance we can delegate down to.
+       *
+       * Get the callable template, a there (3) element array with these elements:
+       *  - 0: Class name
+       *  - 1: Method name
+       *  - 2: 1 for ECHO or 0 for RETURN
        */
       $callable = self::$_mixins[$class_name]->callable_templates['mixins'][$method_name];
+      /**
+       * Replace the classname in element [0] with this instance's contained instance of that class.
+       */
       $callable[0] = $this->_mixin_instances_by_classname[$callable[0]];
+      /**
+       * Call the method and either echo it ('the_*()' methods) or return the value ('get_*() and other methods.)
+       */
       if ( self::METHOD_ECHO == array_pop( $callable ) ) {
         echo call_user_func_array( $callable, $args );
       } else {
@@ -342,9 +356,20 @@ abstract class Exo_Instance_Base extends Exo_Base {
     } else if ( isset( self::$_mixins[$class_name]->callable_templates['owners'][$method_name] ) ) {
       /**
        * We have an owner instance we can delegate up to.
+       *
+       * Get the callable template, a there (3) element array with these elements:
+       *  - 0: Class name
+       *  - 1: Method name
+       *  - 2: 1 for ECHO or 0 for RETURN
        */
       $callable = self::$_mixins[$class_name]->callable_templates['owners'][$method_name];
+      /**
+       * Replace the classname in element [0] with this instance's owner[->owner] of that class.
+       */
       $callable[0] = $this->_get_owner_by_class( $callable[0] );
+      /**
+       * Call the method and either echo it ('the_*()' methods) or return the value ('get_*() and other methods.)
+       */
       if ( self::METHOD_ECHO == array_pop( $callable ) ) {
         echo call_user_func_array( $callable, $args );
       } else {
