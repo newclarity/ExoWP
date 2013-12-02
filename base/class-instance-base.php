@@ -329,6 +329,9 @@ abstract class Exo_Instance_Base extends Exo_Base {
   function __call( $method_name, $args ) {
     $value = null;
     if ( isset( self::$_mixins[$class_name = get_class( $this )]->callable_templates['mixins'][$method_name] ) ) {
+      /**
+       * We have a mixin instance we can delegate down to.
+       */
       $callable = self::$_mixins[$class_name]->callable_templates['mixins'][$method_name];
       $callable[0] = $this->_mixin_instances_by_classname[$callable[0]];
       if ( self::METHOD_ECHO == array_pop( $callable ) ) {
@@ -337,6 +340,9 @@ abstract class Exo_Instance_Base extends Exo_Base {
         $value = call_user_func_array( $callable, $args );
       }
     } else if ( isset( self::$_mixins[$class_name]->callable_templates['owners'][$method_name] ) ) {
+      /**
+       * We have an owner instance we can delegate up to.
+       */
       $callable = self::$_mixins[$class_name]->callable_templates['owners'][$method_name];
       $callable[0] = $this->_get_owner_by_class( $callable[0] );
       if ( self::METHOD_ECHO == array_pop( $callable ) ) {
@@ -345,6 +351,9 @@ abstract class Exo_Instance_Base extends Exo_Base {
         $value = call_user_func_array( $callable, $args );
       }
     } else {
+      /**
+       * Oops. Yes, we have no bananas, we have no bananas today.
+       */
       $message = __( 'ERROR: The class %s does not have a callable instance method %s().', 'exo' );
       _Exo_Helpers::trigger_warning( $message, $class_name, $method_name );
     }
