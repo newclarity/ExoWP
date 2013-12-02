@@ -1,24 +1,9 @@
 <?php
 
 /**
- * Class Exo_Implementation_Base
- *
- * This class is the base for:
- *
- *  - Exo_Webapp_Base
- *  - Exo_Website_Base
- *  - Exo_Plugin_Base
- *  - Exo_Theme_Base
- *  - Exo_Library_Base
- *
- * This class should only contain things that are relevant to all child classes
- *
- *
- * @mixin _Exo_Helpers
- * @mixin _Exo_Php_Helpers
- *
+ * Class Exo_Implementation
  */
-class Exo_Implementation_Base extends Exo_Instance_Base {
+class Exo_Implementation extends Exo_Instance_Base {
 
   /**
    * @var string Prefix for Class name for child class.
@@ -74,7 +59,7 @@ class Exo_Implementation_Base extends Exo_Instance_Base {
   /**
    *
    */
-  function __construct() {
+  function __construct( $dir ) {
 
     if ( defined( 'EXO_RUNMODE' ) ) {
       /*
@@ -86,8 +71,8 @@ class Exo_Implementation_Base extends Exo_Instance_Base {
     /*
      * Capture the URI for the root of this plugin. Assumes this plugin is in a subdirectory of the site root.
      */
-    $this->_uri       = home_url( preg_replace( '#^' . preg_quote( ABSPATH ) . '(.*)$#', '$1', __DIR__ ) );
-    $this->_dir       = __DIR__;
+    $this->_uri       = home_url( preg_replace( '#^' . preg_quote( ABSPATH ) . '(.*)$#', '$1', $dir ) );
+    $this->_dir       = $dir;
     $this->_theme_dir = get_stylesheet_directory();
     $this->_theme_uri = get_stylesheet_directory_uri();
 
@@ -170,7 +155,6 @@ class Exo_Implementation_Base extends Exo_Instance_Base {
     return $path ? "{$this->_theme_uri}/" . ltrim( $path, '/' ) : $this->_theme_uri;
   }
 
-
   /**
    * Fixup the registered helpers after the theme loads but before the default priority 10 hook after_setup_theme.
    */
@@ -192,7 +176,7 @@ class Exo_Implementation_Base extends Exo_Instance_Base {
           $this->_helper_callables[$alt_method_name] = array( $instance, $method_name );
         }
       } else {
-        foreach ( _Exo_Php_Helpers::get_class_methods( $class_name, array( 'public' => true ) ) as $method_name ) {
+        foreach ( _Exo_Helpers::get_class_methods( $class_name, array( 'public' => true ) ) as $method_name ) {
           $this->_helper_callables[$method_name] = array( $instance, $method_name );
         }
       }
@@ -228,7 +212,7 @@ class Exo_Implementation_Base extends Exo_Instance_Base {
    *
    * @return bool
    */
-  function has_helper_method( $method_name ) {
+  function has_helper_callable( $method_name ) {
     return isset( $this->_helper_callables[$method_name] );
   }
 
@@ -237,32 +221,8 @@ class Exo_Implementation_Base extends Exo_Instance_Base {
    *
    * @return bool|callable
    */
-  function get_helper_method( $method_name ) {
+  function get_helper_callable( $method_name ) {
     return isset( $this->_helper_callables[$method_name] ) ? $this->_helper_callables[$method_name] : false;
-  }
-
-  /**
-   * Load the 'on-load' files.
-   */
-  function initialize() {
-    $onload_php = $this->dir( '/../on-load.php' );
-    if ( $this->is_dev_mode() ) {
-      $autoloader = $this->autoloader;
-      foreach( $autoloader->get_onload_filepaths() as $filepath ) {
-        require( $filepath );
-      }
-      /**
-       * Now generate the new /on-load.php, if content has been updated.
-       */
-      $old_content = is_file( $onload_php ) ? file_get_contents( $onload_php ) : false;
-      $new_content = $autoloader->get_onload_files_content();
-      if ( $new_content != $old_content ) {
-        file_put_contents( $onload_php, $new_content );
-      }
-    } else {
-      require( $onload_php );
-    }
-    $this->fixup_registered_helpers();
   }
 
   /**
@@ -274,16 +234,15 @@ class Exo_Implementation_Base extends Exo_Instance_Base {
   }
 
   /**
-   * Load the core classes for Exo, ones that Exo cannot otherwise function without.
-   * Don't use autoloader because we always need these.
+   * Make the autoloadered an Exo helper to make it simplier for themers
+   * We called register_autoload_dir() directly using Exo_Autoloader for (tiny) performance improvement.
    */
-  function require_exo_base_classes() {
-    require(__DIR__ . '/../base/class-helpers-base.php');
-    require(__DIR__ . '/../base/class-mixin-base.php');
-
-    require(__DIR__ . '/../helpers/class-php-helpers.php');
-    require(__DIR__ . '/../helpers/class-helpers.php');
-
+  function register_exo_mvc_autoload_dirs() {
+    $autoloader = $this->autoloader;
+    $autoloader->register_autoload_subdir( __DIR__ . '/../models', 'Exo_' );
+    $autoloader->register_autoload_dir( __DIR__ . '/../mixins', 'Exo_' );
+    $autoloader->register_autoload_dir( __DIR__ . '/../collections', 'Exo_' );
+    $autoloader->register_autoload_dir( __DIR__ . '/../views', 'Exo_' );
   }
 
   /**
@@ -291,7 +250,6 @@ class Exo_Implementation_Base extends Exo_Instance_Base {
    * We called register_autoload_dir() directly using Exo_Autoloader for (tiny) performance improvement.
    */
   function register_exo_autoload_dirs() {
-
     $autoloader = $this->autoloader;
     $autoloader->register_autoload_dir( __DIR__ . '/../base', 'Exo_' );
     $autoloader->register_autoload_dir( __DIR__ . '/../helpers', 'Exo_' );
@@ -299,7 +257,7 @@ class Exo_Implementation_Base extends Exo_Instance_Base {
 
   function enable_mvc() {
     $this->require_exo_mvc_classes();
-    $this->register_mvc_autoload_dirs();
+    $this->register_exo_mvc_autoload_dirs();
   }
 
   /**
@@ -308,23 +266,27 @@ class Exo_Implementation_Base extends Exo_Instance_Base {
    */
   function require_exo_mvc_classes() {
 
+    require(__DIR__ . '/../base/class-mixin-base.php');
     require(__DIR__ . '/../base/class-model-base.php');
     require(__DIR__ . '/../base/class-collection-base.php');
     require(__DIR__ . '/../base/class-view-base.php');
     require(__DIR__ . '/../base/class-post-base.php');
-
   }
 
   /**
-   * Make the autoloadered an Exo helper to make it simplier for themers
-   * We called register_autoload_dir() directly using Exo_Autoloader for (tiny) performance improvement.
+   * Load the core classes for Exo, ones that Exo cannot otherwise function without.
+   * Don't use autoloader because we always need these.
    */
-  function register_mvc_autoload_dirs() {
-    $autoloader = $this->autoloader;
-    $autoloader->register_autoload_subdir( __DIR__ . '/../models', 'Exo_' );
-    $autoloader->register_autoload_dir( __DIR__ . '/../mixins', 'Exo_' );
-    $autoloader->register_autoload_dir( __DIR__ . '/../collections', 'Exo_' );
-    $autoloader->register_autoload_dir( __DIR__ . '/../views', 'Exo_' );
+  function require_exo_base_classes() {
+    /**
+     * Load the base class(es) that are always needed
+     */
+    require(__DIR__ . '/../base/class-helpers-base.php');
+
+    /**
+     * Now load the always loaded helper classes
+     */
+    require(__DIR__ . '/../helpers/class-helpers.php');
 
   }
 
@@ -351,7 +313,7 @@ class Exo_Implementation_Base extends Exo_Instance_Base {
    *
    * @return string
    */
-  function is_staging_mode() {
+  function is_stage_mode() {
     return 'stage' == $this->_runmode;
   }
 

@@ -164,7 +164,7 @@ abstract class Exo_Instance_Base extends Exo_Base {
           'var_name' => $var_name,
           'mixins' => $mixins,
           'parent_class' => get_parent_class( $class_name ),
-          'method_names' => _Exo_Php_Helpers::get_class_methods( $class_name, array(
+          'method_names' => _Exo_Helpers::get_class_methods( $class_name, array(
             'own' => true,
             'public' => true,
             'instance' => true,

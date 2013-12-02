@@ -22,37 +22,20 @@ require( __DIR__ . '/core/exo-core.php');
  */
 class Exo extends Exo_Library_Base {
 
-  /**
-   * @var Exo_Implementation_Base
-   *
-   * All Exo implementations need to register an instance.
-   */
-  static $instance;
-
   static function on_load() {
     /**
-     * Create the instance class
+     * First we register Exo to use Exo_Implementation.
      */
-    self::$instance = new Exo_Implementation();
+    self::register_implementation( __CLASS__, __DIR__ );
 
     /**
-     * Then they should register their instance
+     * Register any autoload dirs or helpers here.
      */
-    self::register_instance( __CLASS__, self::$instance );
+    self::enable_mvc();
 
+    /**
+     * Finally we run initialization that does all fixups.
+     */
     self::initialize();
   }
 }
-
-/**
- * Class Exo_Implementation
- */
-class Exo_Implementation extends Exo_Implementation_Base {
-  function __construct() {
-    parent::__construct();
-    $this->enable_mvc();
-  }
-
-}
-
-
