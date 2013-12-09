@@ -164,7 +164,7 @@ class Exo_Implementation extends Exo_Instance_Base {
       if ( is_object( $class_name ) ) {
         $instance = $class_name;
         $this->_helper_instances[$class_name = get_class( $instance )] = $instance;
-      } else if ( ! isset($this->_helper_instances[$class_name]) ) {
+      } else if ( ! isset( $this->_helper_instances[$class_name]) ) {
         $this->_helper_instances[$class_name] = $instance = new $class_name();
       } else {
         $instance = $this->_helper_instances[$class_name];
@@ -325,6 +325,7 @@ class Exo_Implementation extends Exo_Instance_Base {
   function is_live_mode() {
     return 'live' == $this->_runmode;
   }
+    // @todo More to come here...
 
   /**
    * Returns the Run Mode, one of: 'dev', 'test', 'stage' or 'live.'

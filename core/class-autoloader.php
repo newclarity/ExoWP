@@ -7,7 +7,7 @@
 class Exo_Autoloader extends Exo_Base {
 
   /**
-   * @var Exo_Implementation_Base Class that owns this autoloader
+   * @var Exo_Implementation Class that owns this autoloader
    */
   private $owner;
 
@@ -132,7 +132,6 @@ class Exo_Autoloader extends Exo_Base {
   function get_autoload_dirs() {
     return $this->_autoload_dirs;
   }
-
 
   /**
    *  Scans through the autoload dirs and adds the potential classes based on .php file names.

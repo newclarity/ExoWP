@@ -17,8 +17,6 @@ require( __DIR__ . '/core/exo-core.php');
 
 /**
  * Class Exo
- *
- * @method static void register_helper( string $class_name, string $method_name = false, string $alt_method_name = false )
  */
 class Exo extends Exo_Library_Base {
 
