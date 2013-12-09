@@ -81,18 +81,6 @@ class Exo_Autoloader extends Exo_Base {
   }
 
   /**
-   * Register a directory that contains subdirectories that each containes one of more classes to autoload.
-   *
-   * @param string $dir
-   * @param bool|string $prefix
-   */
-  function register_autoload_subdir( $dir, $prefix = false ) {
-    foreach ( glob( "{$dir}/*", GLOB_ONLYDIR ) as $subdir ) {
-      $this->register_autoload_dir( $subdir, $prefix );
-    }
-  }
-
-  /**
    *
    */
   function init_9() {

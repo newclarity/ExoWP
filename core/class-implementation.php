@@ -174,7 +174,9 @@ class Exo_Implementation extends Exo_Instance_Base {
    */
   function register_exo_mvc_autoload_dirs() {
     $autoloader = $this->autoloader;
-    $autoloader->register_autoload_subdir( __DIR__ . '/../models', 'Exo_' );
+
+    $autoloader->register_autoload_dir( __DIR__ . '/../models/post-types', 'Exo_' );
+    $autoloader->register_autoload_dir( __DIR__ . '/../models/taxonomies', 'Exo_' );
     $autoloader->register_autoload_dir( __DIR__ . '/../mixins', 'Exo_' );
     $autoloader->register_autoload_dir( __DIR__ . '/../collections', 'Exo_' );
     $autoloader->register_autoload_dir( __DIR__ . '/../views', 'Exo_' );
