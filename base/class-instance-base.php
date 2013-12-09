@@ -344,7 +344,7 @@ abstract class Exo_Instance_Base extends Exo_Base {
       /**
        * Replace the classname in element [0] with this instance's contained instance of that class.
        */
-      $callable[0] = $this->_mixin_instances_by_classname[$callable[0]];
+      $callable[0] = $this->_get_mixin_by_classname( $callable[0] );
       /**
        * Call the method and either echo it ('the_*()' methods) or return the value ('get_*() and other methods.)
        */
@@ -366,7 +366,7 @@ abstract class Exo_Instance_Base extends Exo_Base {
       /**
        * Replace the classname in element [0] with this instance's owner[->owner] of that class.
        */
-      $callable[0] = $this->_get_owner_by_class( $callable[0] );
+      $callable[0] = $this->_get_owner_by_classname( $callable[0] );
       /**
        * Call the method and either echo it ('the_*()' methods) or return the value ('get_*() and other methods.)
        */
@@ -388,11 +388,11 @@ abstract class Exo_Instance_Base extends Exo_Base {
   /**
    * Traverse up the owners and return the owner that matches the passed class, or the first owner if no
    *
-   * @param bool|string $class_name
+   * @param string $class_name
    *
    * @return bool|Exo_Instance_Base
    */
-  private function _get_owner_by_class( $class_name = false ) {
+  private function _get_owner_by_classname( $class_name ) {
     $owner = false;
     if ( ! $class_name ) {
       $owner = $this->owner;
@@ -400,10 +400,33 @@ abstract class Exo_Instance_Base extends Exo_Base {
       if ( $class_name == get_class( $this->owner ) ) {
         $owner = $this->owner;
       } else {
-        $owner = $this->owner->_get_owner_by_class( $class_name );
+        $owner = $this->owner->_get_owner_by_classname( $class_name );
       }
     }
     return $owner;
+  }
+
+
+
+  /**
+   * Traverse down the mixins and return the mixin that matches the passed class.
+   *
+   * @param string $class_name
+   *
+   * @return bool|Exo_Instance_Base
+   */
+  private function _get_mixin_by_classname( $class_name ) {
+    $mixin = false;
+    if ( isset( $this->_mixin_instances_by_classname[$class_name] ) ) {
+      $mixin = $this->_mixin_instances_by_classname[$class_name];
+    } else {
+      foreach( $this->_mixin_instances_by_classname as $mixin_class => $mixin_instance ) {
+        if ( $mixin = $this->_get_mixin_by_classname( $mixin_class ) ) {
+          break;
+        }
+      }
+    }
+    return $mixin;
   }
 
   /**
@@ -433,10 +456,10 @@ abstract class Exo_Instance_Base extends Exo_Base {
     if ( ! self::$_mixins[$class_name]->callable_templates[$template_type] ) {
       $delegated_templates = array();
       if ( 0 < count( $class_info->$template_type ) ) {
-        foreach( $class_info->$template_type as $delegator_class => $delegator_info ) {
-          $delegated_templates[] = call_user_func( array( __CLASS__, __FUNCTION__ ), $template_type, $delegator_class, $delegator_info );
-          if ( ! isset( self::$_mixins[$delegator_class]->owners[$class_name] ) && $delegator_class != $class_name ) {
-            self::$_mixins[$delegator_class]->owners[$class_name] = $class_info;
+        foreach( $class_info->$template_type as $mixedin_class => $mixedin_info ) {
+          $delegated_templates[] = call_user_func( array( __CLASS__, __FUNCTION__ ), $template_type, $mixedin_class, $mixedin_info );
+          if ( ! isset( self::$_mixins[$mixedin_class]->owners[$class_name] ) && $mixedin_class != $class_name ) {
+            self::$_mixins[$mixedin_class]->owners[$class_name] = $class_info;
           }
         }
         switch ( $count = count( $delegated_templates ) ) {
