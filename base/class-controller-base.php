@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Class Exo_Main_Base
+ * Class Exo_Controller_Base
  *
  * Base classes for Main Classes for an implementation.
  *
@@ -9,18 +9,12 @@
  * All values needed to be managed should instead be places in the instannce's class.
  *
  * @mixin _Exo_Helpers
+ * @mixin _Exo_Meta_Helpers
  *
  * @mixin Exo_Implementation
  * @method static string uri( string $path = false )
  * @method static string dir( string $path = false )
- * @method static string theme_dir( string $path = false )
- * @method static string theme_uri( string $path = false )
  * @method static string get_helper_callable( string $method_name )
- * @method static string get_runmode()
- * @method static bool is_dev_mode()
- * @method static bool is_test_mode()
- * @method static bool is_stage_mode()
- * @method static bool is_live_mode()
  * @method static bool has_method( string $method_name )
  * @method static bool has_helper_callable( string $method_name )
  * @method static void register_helper( string $class_name, string $method_name = false, string $alt_method_name = false )
@@ -29,10 +23,8 @@
  * @method static void require_exo_base_classes()
  * @method static void register_exo_mvc_autoload_dirs()
  * @method static void register_exo_autoload_dirs()
- * @method static void maybe_adjust_http_scheme( string $url )
  * @method static void fixup_registered_helpers()
  * @method static void enable_mvc()
- * @method static void set_runmode(string $runmode)
  *
  * @mixin Exo_Autoloader
  * @method static void register_autoload_classes( array $classes )
@@ -42,15 +34,178 @@
  * @method static array get_autoload_dirs()
  * @method static array get_onload_files_content()
  * @method static array get_onload_filepaths()
- * @method static bool is_wp_loaded()
  *
  */
-abstract class Exo_Main_Base extends Exo_Base {
+abstract class Exo_Controller_Base extends Exo_Base {
 
   /**
    * @var array
    */
   private static $_implementations = array();
+
+  /**
+   * @var bool Flag variable to track if the 'wp_loaded' hook has fired yet or not.
+   */
+  private static $_is_wp_loaded = false;
+
+  /**
+   * @var string Directory for the theme dir for this site. If it has a parent theme, it returns the child theme's dir.
+   */
+  private static $_theme_dir;
+
+  /**
+   * @var string URL for the theme dir for this site. If it has a parent theme, it returns the child theme's dir.
+   */
+  private static $_theme_uri;
+
+  /**
+   * @var string Target environment, must be one of 'dev', 'test', 'stage' or 'live.'
+   *             Defaults to 'live' because that's the safest default.
+   * @todo Decide if this is correct or if we should have one runmode per implementation?
+   */
+  private static $_runmode = 'live';
+
+  /**
+   *
+   */
+  static function on_load() {
+
+    if ( defined( 'EXO_RUNMODE' ) ) {
+      /*
+       * This is a fallback so it can be set when using require( 'wp-load.php' );
+       */
+      self::set_runmode( EXO_RUNMODE );
+    }
+
+    self::$_theme_dir = get_stylesheet_directory();
+    /**
+     * Ensure we are using the right scheme for the incoming URL (http vs. https)
+     */
+    self::$_theme_uri = self::maybe_adjust_http_scheme( get_stylesheet_directory_uri() );
+
+    add_action( 'wp_loaded', array( __CLASS__, '_wp_loaded_0' ), 0 );
+
+  }
+
+  /**
+   * Align the HTTP scheme (SSL vs. non SSL) to be consistent with incoming URL.
+   *
+   * @param $url
+   *
+   * @return mixed
+   */
+  static function maybe_adjust_http_scheme( $url ) {
+    $scheme = is_ssl() ? 'https' : 'http';
+    return preg_replace( '#^https?://#', "{$scheme}://", $url );
+  }
+
+  /**
+   *
+   */
+  static function _wp_loaded_0() {
+    self::$_is_wp_loaded = true;
+  }
+
+  /**
+   *
+   */
+  static function is_wp_loaded() {
+    return self::$_is_wp_loaded;
+  }
+
+  /**
+   * Returns the directory for the theme dir for this site. If it has a parent theme, it returns the child theme's dir.
+   *
+   * @note Does not contain a trailing slash if no $path is passed.
+   *
+   * @param bool|string $path
+   *
+   * @return string
+   */
+  static function theme_dir( $path = false ) {
+    return $path ? "{self::$_theme_dir}/" . ltrim( $path, '/' ) : self::$_theme_dir;
+  }
+
+  /**
+   * Returns the URI/URL for the theme dir for this site. If it has a parent theme, it returns the child theme's dir.
+   *
+   * @note Does not contain a trailing slash if no $path is passed.
+   *
+   * @param bool|string $path
+   *
+   * @return string
+   */
+  static function theme_uri( $path = false ) {
+    return $path ? "{self::$_theme_uri}/" . ltrim( $path, '/' ) : self::$_theme_uri;
+  }
+  /**
+   * Returns true if a Development Deployment.
+   *
+   * @return string
+   */
+  static function is_dev_mode() {
+    return 'dev' == self::$_runmode;
+  }
+
+  /**
+   * Returns true if a Testing Deployment.
+   *
+   * @return string
+   */
+  static function is_test_mode() {
+    return 'test' == self::$_runmode;
+  }
+
+  /**
+   * Returns true if a Staging Deployment.
+   *
+   * @return string
+   */
+  static function is_stage_mode() {
+    return 'stage' == self::$_runmode;
+  }
+
+  /**
+   * Returns true if a Live Deployment, i.e. Production.
+   *
+   * @return string
+   */
+  static function is_live_mode() {
+    return 'live' == self::$_runmode;
+  }
+
+  /**
+   * Returns the Run Mode, one of: 'dev', 'test', 'stage' or 'live.'
+   *
+   * @return string
+   */
+  static function get_runmode() {
+    return self::$_runmode;
+  }
+
+  /**
+   * @param $runmode
+   *
+   * @throws Exception
+   */
+  static function set_runmode( $runmode ) {
+    if ( ! WP_DEBUG ) {
+      self::$_runmode = strtolower( $runmode );
+    } else {
+      switch ( $runmode ) {
+        case 'dev':
+        case 'test':
+        case 'stage':
+        case 'live':
+          self::$_runmode = strtolower( $runmode );
+          break;
+        default:
+          $message = __( 'ERROR: Neither Exo nor any of it\'s helper classes have the method %s().', 'exo' );
+          trigger_error( sprintf( $message, $method_name ), E_USER_WARNING );
+          break;
+      }
+    }
+  }
 
   /**
    * Registers a class to start being extended by helpers.
@@ -66,6 +221,7 @@ abstract class Exo_Main_Base extends Exo_Base {
       ));
       $implementation = is_string( $dir_or_implementation ) ? new Exo_Implementation( $dir_or_implementation ) : $dir_or_implementation;
       $implementation->class_prefix = "{$class_name}_";
+      $implementation->controller_class = $class_name;
       self::$_implementations[$class_name] = $implementation;
       if ( $args['make_global'] ) {
         $GLOBALS[$class_name] = $instance;
@@ -74,9 +230,10 @@ abstract class Exo_Main_Base extends Exo_Base {
   }
 
   /**
-   * Allows a class that extends from Exo_Main_Base to register an instance of Exo_Instance_Core
+   * Allows a class that extends from Exo_Controller_Base to register an instance of Exo_Instance_Core
    *
    * @param string $class_prefix
+   * @note This method may go away.
    */
   static function register_class_prefix( $class_prefix ) {
     if ( isset( self::$_implementations[$called_class = get_called_class()] ) ) {
@@ -93,13 +250,16 @@ abstract class Exo_Main_Base extends Exo_Base {
    */
   static function initialize() {
     if ( isset( self::$_implementations[$called_class = get_called_class()] ) ) {
+
+      do_action( 'exo_autoloader_classes', $called_class );
+
       /**
        * @var Exo_Implementation $implementation
        */
       $implementation = self::$_implementations[$called_class];
 
       $onload_php = $implementation->dir( '/on-load.php' );
-      if ( $implementation->is_dev_mode() ) {
+      if ( self::is_dev_mode() ) {
         $autoloader = $implementation->autoloader;
         foreach( $autoloader->get_onload_filepaths() as $filepath ) {
           require( $filepath );
@@ -170,4 +330,4 @@ abstract class Exo_Main_Base extends Exo_Base {
   }
 
 }
-
+Exo_Controller_Base::on_load();

@@ -22,11 +22,6 @@ class Exo_Autoloader extends Exo_Base {
   private $_autoload_classes = array();
 
   /**
-   * @var bool Flag variable to track if the 'wp_loaded' hook has fired yet or not.
-   */
-  private $_is_wp_loaded = false;
-
-  /**
    * @var array
    */
   private $_onload_filepaths;
@@ -42,7 +37,6 @@ class Exo_Autoloader extends Exo_Base {
     /**
      * Add hooks for this class
      */
-    add_action( 'wp_loaded', array( $this, '_wp_loaded_0' ), 0 );
     add_action( 'init', array( $this, 'init_9' ), 9 );
     add_action( 'after_setup_theme', array( $this, '_after_setup_theme_9' ), 9 );
 
@@ -82,7 +76,7 @@ class Exo_Autoloader extends Exo_Base {
      * If we've already reached the 'wp_loaded' hook then we'll need
      * to call the method that loads classnames into the _autoload_classes array.
      */
-    if ( $this->_is_wp_loaded )
+    if ( Exo::is_wp_loaded() )
       $this->_add_autoloader_classes();
   }
 
@@ -173,20 +167,6 @@ class Exo_Autoloader extends Exo_Base {
       require($this->_autoload_classes[$class_name]);
       unset($this->_autoload_classes[$class_name]);
     }
-  }
-
-  /**
-   *
-   */
-  function _wp_loaded_0() {
-    $this->_is_wp_loaded = true;
-  }
-
-  /**
-   *
-   */
-  function is_wp_loaded() {
-    return $this->_is_wp_loaded;
   }
 
 }
