@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Class Exo_Helpers
+ * Class _Exo_Helpers
  *
  * Helpers that help with Exo-specific functionality.
  *
