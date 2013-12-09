@@ -24,7 +24,7 @@ class Exo_Autoloader extends Exo_Base {
   /**
    * @var array
    */
-  private $_onload_filepaths;
+  private $_onload_filepaths = array();
 
   /**
    *
@@ -38,7 +38,7 @@ class Exo_Autoloader extends Exo_Base {
      * Add hooks for this class
      */
     add_action( 'init', array( $this, 'init_9' ), 9 );
-    add_action( 'after_setup_theme', array( $this, '_after_setup_theme_9' ), 9 );
+    add_action( 'exo_autoloader_classes', array( $this, 'exo_autoloader_classes' ) );
 
   }
 
@@ -90,8 +90,10 @@ class Exo_Autoloader extends Exo_Base {
   /**
    *
    */
-  function _after_setup_theme_9() {
-    $this->_add_autoloader_classes();
+  function exo_autoloader_classes( $called_class ) {
+    if ( $called_class == $this->owner->controller_class ) {
+      $this->_add_autoloader_classes();
+    }
   }
 
   /**
@@ -99,11 +101,23 @@ class Exo_Autoloader extends Exo_Base {
    */
   private function _add_autoloader_classes() {
     foreach ( $this->_autoload_dirs as $dir => $prefix ) {
+      $prefix = strtolower( $prefix );
       foreach ( glob( "{$dir}/*.php" ) as $filepath ) {
-        $class_name = $prefix . str_replace( '-', '_', preg_replace( '#^(.*)/(class-)?(.*?)\.php$#', '$3', $filepath ) );
-        $this->_autoload_classes[$class_name] = $filepath;
+        if ( preg_match( '#\.on-load\.php$#', $filepath ) ) {
+          $this->_onload_filepaths[] = $filepath;
+        } else {
+          preg_match( '#^(.*)/((-?)class-)?(.*?)\.php$#', $filepath, $matches );
+          $class_name = str_replace( '-', '_', preg_replace( '#^(.*)/((-?)class-)?(.*?)\.php$#', "$3{$prefix}$4", $filepath ) );
+          if ( ! class_exists( $class_name ) ) {
+            $this->_autoload_classes[$class_name] = $filepath;
+          }
+        }
       }
     }
+    /**
+     * Clear this list out so we don't processes them again.
+     */
+    $this->_autoload_dirs = array();
   }
 
   /**
@@ -131,16 +145,11 @@ class Exo_Autoloader extends Exo_Base {
 
   /**
    *  Scans through the autoload dirs and adds the potential classes based on .php file names.
+   *
+   * This MUST be called after hook _after_setup_theme_8() is run.
+   * @todo Add check to ensure not called before it's valid.
    */
   function get_onload_filepaths() {
-    if ( ! isset( $this->_onload_filepaths ) ) {
-      $this->_onload_filepaths = array();
-      foreach ( $this->_autoload_dirs as $dir => $prefix ) {
-        foreach ( glob( "{$dir}/*.on-load.php" ) as $filepath ) {
-          $this->_onload_filepaths[] = $filepath;
-        }
-      }
-    }
     return $this->_onload_filepaths;
   }
 
@@ -151,7 +160,7 @@ class Exo_Autoloader extends Exo_Base {
    */
   function _autoload( $class_name ) {
     $class_name = strtolower( $class_name );
-    if ( isset($this->_autoload_classes[$class_name]) ) {
+    if ( isset( $this->_autoload_classes[$class_name] ) ) {
       require($this->_autoload_classes[$class_name]);
       unset($this->_autoload_classes[$class_name]);
     }

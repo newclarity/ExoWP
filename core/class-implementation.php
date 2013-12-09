@@ -11,6 +11,11 @@ class Exo_Implementation extends Exo_Instance_Base {
   var $class_prefix = false;
 
   /**
+   * @var Exo_Controller_Base Class that "owns" this implementation.
+   */
+  var $controller_class;
+
+  /**
    * @var Exo_Autoloader
    */
   var $autoloader;
@@ -223,6 +228,7 @@ class Exo_Implementation extends Exo_Instance_Base {
     /**
      * Now load the always loaded helper classes
      */
+    require(__DIR__ . '/../helpers/-class-helpers.php');
     // @todo More to come here...
 
   }
