@@ -6,16 +6,23 @@
 abstract class Exo_Model_Base extends Exo_Instance_Base {
 
   /**
-   * @var WP_Post
+   * @var object
    */
-  private $_post;
+  private $_object;
 
   /**
-   * @param WP_Post $post
+   * @param bool|object $object
    */
-  function __construct( $post ) {
+  function __construct( $object = false ) {
     parent::__construct();
-    $this->_post = $post;
+    $this->_object = $object;
+  }
+
+  /**
+   * @return object
+   */
+  function to_object() {
+    return $this->_object;
   }
 
 }
