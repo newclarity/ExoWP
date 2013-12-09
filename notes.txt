@@ -1,0 +1,12 @@
+PHP Language Features
+----------------------
+- Mixins
+- Models, Views, Collections
+API SDK (Helper methods)
+
+WordPress Platform Features
+----------------------------
+- Template Matrix
+- URL Routing
+- Autoloading
+	- On-load support
