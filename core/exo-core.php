@@ -7,7 +7,7 @@ if ( ! class_exists( 'Exo_Base' ) ) {
    * Base classes
    */
   require( __DIR__ . '/../base/class-base.php');
-  require( __DIR__ . '/../base/class-main-base.php');
+  require( __DIR__ . '/../base/class-controller-base.php');
   require( __DIR__ . '/../base/class-instance-base.php');
   require( __DIR__ . '/../base/class-library-base.php');
 
