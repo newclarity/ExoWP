@@ -320,6 +320,32 @@ abstract class Exo_Instance_Base extends Exo_Base {
   }
 
   /**
+   * Test to see if the current instance has a method or a mixin method for the given method.
+   *
+   * @param string $method_name
+   *
+   * @return mixed
+   */
+  function has_method( $method_name ) {
+    return method_exists( $this, $method_name ) || $this->has_mixin( $method_name );
+  }
+
+  /**
+   * Test to see if the current instance has a mixin for the given method.
+   *
+   * @param string $method_name
+   *
+   * @return mixed
+   */
+  function has_mixin( $method_name ) {
+    $class_name = get_class( $this );
+    return isset( self::$_mixins[$class_name] ) && (
+      isset( self::$_mixins[$class_name]->callable_templates['mixins'][$method_name] )
+      ||
+      isset( self::$_mixins[$class_name]->callable_templates['owners'][$method_name] )
+    );
+  }
+  /**
    * This is where the mixin magic happens!
    *
    * Call the mixin methods or owner methods if the mixin or owner methods exist.

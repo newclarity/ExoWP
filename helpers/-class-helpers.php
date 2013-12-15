@@ -72,7 +72,7 @@ class _Exo_Helpers extends Exo_Helpers_Base {
       $message[] = "\n  " . sprintf( __( 'Called %sin %s on line %s', 'exo' ), $function, $call['file'], $call['line'] );
     }
     $message[] = "\n  " . __( 'Called ' . __CLASS__ . '::trigger_error()', 'exo' );
-    trigger_error( implode( $message ), E_USER_WARNING );
+    Exo::trigger_warning( implode( $message ) );
   }
 
   /**
@@ -153,6 +153,116 @@ class _Exo_Helpers extends Exo_Helpers_Base {
       }
     }
     return self::$_class_methods[$class_name][$hash];
+  }
+
+  /**
+   * Return array of all permutations key=value for an array, independent of key order.
+   *
+   * Takes an array of named values (associative array) and provides all permutations.
+   *
+   * This is used to determine theme template subdirectories and filenames.
+   *
+   * @note
+   *
+   *    Method is recursive and leading underscore parameters ($_*)
+   *    are used by the recursion and not expected to be passed in.
+   *
+   * @example
+   *
+   *   // This call
+   *   $permutations = Spark_City::get_array_permutations( array(
+   *     'a' => '1',
+   *     'b' => '2',
+   *     'c' => '3',
+   *     'd' => '4',
+   *   ));
+   *
+   *   // Sets $permutations to look like this:
+   *   array(
+   *     array(),
+   *     array( 'a'=>'1' ),
+   *     array( 'b'=>'2' ),
+   *     array( 'a'=>'1', 'b'=>'2' ),
+   *     array( 'c'=>'3' ),
+   *     array( 'a'=>'1', 'c'=>'3' ),
+   *     array( 'b'=>'2', 'c'=>'3' ),
+   *     array( 'a'=>'1', 'b'=>'2', 'c'=>'3' ),
+   *     array( 'd'=>'4' ),
+   *     array( 'a'=>'1', 'd'=>'4' ),
+   *     array( 'b'=>'2', 'd'=>'4' ),
+   *     array( 'a'=>'1', 'b'=>'2', 'd'=>'4' ),
+   *     array( 'c'=>'3', 'd'=>'4' ),
+   *     array( 'a'=>'1', 'c'=>'3', 'd'=>'4' ),
+   *     array( 'b'=>'2', 'c'=>'3', 'd'=>'4' ),
+   *     array( 'a'=>'1', 'b'=>'2', 'c'=>'3', 'd'=>'4' ),
+   *   );
+   *
+   * @note
+   *
+   *    The following is used to generate the above example.
+   *
+   *    function dump_a( $a, $lvl = 0 ) {
+   *      $tabs = str_repeat( "  ", $lvl );
+   *      echo "{$tabs}array(";
+   *      $args = array();
+   *      foreach( $a as $i => $e ) {
+   *        if ( is_array( $e ) ) {
+   *          echo "\n *  ";
+   *          dump_a( $e, $lvl+1 );
+   *        } else {
+   *          $args[] = "'{$i}'=>'{$e}'";
+   *        }
+   *      }
+   *      if ( count( $a ) ) {
+   *        echo ' ' . implode( ', ', $args ) . ' ';
+   *      }
+   *      echo $lvl ? '),' : "\n *  );";
+   *    }
+   *
+   *    dump_a( Spark_City::get_array_permutations( array(
+   *      'a' => '1',
+   *      'b' => '2',
+   *      'c' => '3',
+   *      'd' => '4',
+   *    )));
+   *
+   * @param array $named_values
+   * @param $_permutations $named_values
+   * @param array $_visited
+   *
+   * @return array
+   */
+  static function get_array_permutations( $named_values, &$_permutations = array(), &$_visited = array() ) {
+    /**
+     * Scan through array and arrange to remove one element
+     * during each pass and the add it to the permutations array.
+     */
+    $count = count( $named_values );
+    $new_permutations = array();
+    for( $i = 0; $i < $count; $i++ ) {
+      $left = array_slice( $named_values, 0, $count - $i - 1 );
+      $right = array_slice( $named_values, $count - $i );
+      $new_permutation = array_merge( $left, $right );
+      $hash = md5( serialize( $new_permutation ) );
+      if ( ! isset( $_visited[$hash] ) ) {
+        $new_permutations[$hash] = $new_permutation;
+        $_visited[$hash] = true;
+      }
+    }
+    /**
+     * Now scan through the new permutations, find their new permutations
+     * and continue to merge them into our new permutations array.
+     */
+    foreach( $new_permutations as $permutation ) {
+      self::get_array_permutations( $permutation, $_permutations, $_visited );
+    }
+
+    /**
+     * Finally add the original array to the end.
+     */
+    $_permutations[] = $named_values;
+
+    return $_permutations;
   }
 
 }

@@ -9,6 +9,7 @@
  * All values needed to be managed should instead be places in the instannce's class.
  *
  * @mixin _Exo_Helpers
+ * @mixin _Exo_Post_Helpers
  * @mixin _Exo_Meta_Helpers
  *
  * @mixin Exo_Implementation
@@ -66,6 +67,11 @@ abstract class Exo_Controller_Base extends Exo_Base {
   private static $_runmode = 'live';
 
   /**
+   * @var string
+   */
+  private static $_included_template;
+
+  /**
    *
    */
   static function on_load() {
@@ -85,6 +91,39 @@ abstract class Exo_Controller_Base extends Exo_Base {
 
     add_action( 'wp_loaded', array( __CLASS__, '_wp_loaded_0' ), 0 );
 
+    /*
+     * Call as late as possible so that no other hooks modify after since I goal is to just capture the value.
+     */
+    add_action( 'template_include', array( __CLASS__, 'template_include_9999999' ), 9999999 );
+  }
+
+  /**
+  * Capture filepath of the theme template file that was loaded by WordPress' template-loader.php into a static var.
+   *
+  * @param string $template_filepath
+  * @return bool
+  */
+  static function template_include_9999999() {
+    self::$_included_template = func_get_arg( 0 );
+
+    if ( isset( $GLOBALS['posts'] ) && is_array( $GLOBALS['posts'] ) && 1 < $GLOBALS['posts'] ) {
+      $view = new Exo_Post_Collection_View( $GLOBALS['posts'] );
+    } else if ( isset( $GLOBALS['post'] ) && $GLOBALS['post'] instanceof WP_Post ) {
+      $view = new Exo_Post_View( $GLOBALS['post'] );
+    }
+
+    require( self::$_included_template );
+
+    return dirname( __DIR__ ) . '/templates/empty.php';
+  }
+
+  /**
+  * Returns filepath of the theme template file that was loaded by WordPress' template-loader.php
+   *
+  * @return string
+  */
+  static function get_included_template() {
+    return self::$_included_template;
   }
 
   /**
@@ -201,7 +240,7 @@ abstract class Exo_Controller_Base extends Exo_Base {
           break;
         default:
           $message = __( 'ERROR: Neither Exo nor any of it\'s helper classes have the method %s().', 'exo' );
-          trigger_error( sprintf( $message, $method_name ), E_USER_WARNING );
+          Exo::trigger_warning( $message, $method_name );
           break;
       }
     }

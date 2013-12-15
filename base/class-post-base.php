@@ -205,4 +205,14 @@ abstract class Exo_Post_Base extends Exo_Model_Base {
     return $post;
   }
 
+  /**
+   * @param array $args
+   * @return array
+   */
+  function get_posts( $args = array() ) {
+    $args = wp_parse_args( $args );
+    $args['post_type'] = ( $post_type = $this->get_post_type() ) ? $post_type : 'post';
+    $posts = Exo::get_posts( $args );
+    return $posts;
+  }
 }

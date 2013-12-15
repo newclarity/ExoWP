@@ -9,4 +9,5 @@
  *
  */
 abstract class Exo_Post_Collection_Base extends Exo_Collection_Base {
+
 }
