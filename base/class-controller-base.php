@@ -247,6 +247,13 @@ abstract class Exo_Controller_Base extends Exo_Base {
   }
 
   /**
+   * @return Exo_Implementation
+   */
+  static function get_implementation() {
+    return isset( self::$_implementations[$class_name = get_called_class()] ) ? self::$_implementations[$class_name] : false;
+  }
+
+  /**
    * Registers a class to start being extended by helpers.
    *
    * @param string $class_name
@@ -261,6 +268,15 @@ abstract class Exo_Controller_Base extends Exo_Base {
       $implementation = is_string( $dir_or_implementation ) ? new Exo_Implementation( $dir_or_implementation ) : $dir_or_implementation;
       $implementation->class_prefix = "{$class_name}_";
       $implementation->controller_class = $class_name;
+
+      foreach( $args as $name => $value ) {
+        if ( property_exists( $implementation, $name ) ) {
+          $implementation->$name = $value;
+        } else if ( property_exists( $implementation, $name = "_{$name}" ) ) {
+          $implementation->$name = $value;
+        }
+      }
+
       self::$_implementations[$class_name] = $implementation;
       if ( $args['make_global'] ) {
         $GLOBALS[$class_name] = $instance;

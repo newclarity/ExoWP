@@ -11,3 +11,9 @@ Exo::register_helper( '_Exo_Helpers' );
 
 Exo::register_helper( '_Exo_Meta_Helpers' );
 
+/**
+ * File: /helpers/-class-post-helpers.on-load.php
+ */
+
+Exo::register_helper( '_Exo_Post_Helpers' );
+

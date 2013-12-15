@@ -71,7 +71,7 @@ class Exo_Autoloader extends Exo_Base {
     if ( ! $prefix && $this->owner->class_prefix ) {
       $prefix = $this->owner->class_prefix;
     }
-    $this->_autoload_dirs[$dir] = $prefix;
+    $this->_autoload_dirs[realpath( $dir )] = $prefix;
     /*
      * If we've already reached the 'wp_loaded' hook then we'll need
      * to call the method that loads classnames into the _autoload_classes array.

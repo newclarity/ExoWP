@@ -69,7 +69,7 @@ class _Exo_Helpers extends Exo_Helpers_Base {
       if ( isset( $call['object'] ) && isset( $call['type'] ) ) {
         $function = get_class( $call['object'] ) . "{$call['type']}{$function}";
       }
-      $message[] = "\n  " . sprintf( __( 'Called %sin %s on line %s', 'exo' ), $function, $call['file'], $call['line'] );
+      $message[] = "\n  " . sprintf( __( 'Called %s in %s on line %s', 'exo' ), $function, $call['file'], $call['line'] );
     }
     $message[] = "\n  " . __( 'Called ' . __CLASS__ . '::trigger_error()', 'exo' );
     Exo::trigger_warning( implode( $message ) );
@@ -263,6 +263,20 @@ class _Exo_Helpers extends Exo_Helpers_Base {
     $_permutations[] = $named_values;
 
     return $_permutations;
+  }
+
+  /**
+   * @return bool
+   */
+  static function get_post_type_prefix() {
+    return Exo::get_implementation()->post_type_prefix;
+  }
+
+  /**
+   * @return bool
+   */
+  static function get_class_prefix() {
+    return Exo::get_implementation()->class_prefix;
   }
 
 }

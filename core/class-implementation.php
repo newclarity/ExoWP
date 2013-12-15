@@ -8,7 +8,12 @@ class Exo_Implementation extends Exo_Instance_Base {
   /**
    * @var string Prefix for Class name for child class.
    */
-  var $class_prefix = false;
+  var $class_prefix = 'Exo_';
+
+  /**
+   * @var bool
+   */
+  var $post_type_prefix = 'exo_';
 
   /**
    * @var Exo_Controller_Base Class that "owns" this implementation.
@@ -61,12 +66,14 @@ class Exo_Implementation extends Exo_Instance_Base {
      */
     $this->_uri       = Exo::maybe_adjust_http_scheme( $this->_uri );
 
-    if ( ! class_exists( 'Exo_Autoloader' ) ) {
+    if ( class_exists( 'Exo_Autoloader' ) ) {
+      $this->autoloader = new Exo_Autoloader( $this );
+    } else {
       $this->require_exo_autoloader();
-      $this->require_exo_base_classes();
+      $this->autoloader = new Exo_Autoloader( $this );
       $this->register_exo_autoload_dirs();
+      $this->require_exo_base_classes();
     }
-
   }
 
   /**
@@ -170,7 +177,6 @@ class Exo_Implementation extends Exo_Instance_Base {
    */
   function require_exo_autoloader() {
     require(__DIR__ . '/../core/class-autoloader.php');
-    $this->autoloader = new Exo_Autoloader( $this );
   }
 
   /**
