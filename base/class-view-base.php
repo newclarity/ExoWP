@@ -31,6 +31,13 @@ abstract class Exo_View_Base extends Exo_Instance_Base {
   private static $_template_part_counter = 1;
 
   /**
+   * @param bool|Exo_Model_Base $model
+   */
+  function __construct( $model = false ) {
+    $this->model = $model;
+  }
+
+  /**
    * Mirrors WordPress' get_header() but with support for skins.
    *
    * @param null $header_name

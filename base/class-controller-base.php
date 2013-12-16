@@ -94,7 +94,7 @@ abstract class Exo_Controller_Base extends Exo_Base {
     /*
      * Call as late as possible so that no other hooks modify after since I goal is to just capture the value.
      */
-    add_action( 'template_include', array( __CLASS__, 'template_include_9999999' ), 9999999 );
+    add_action( 'template_include', array( __CLASS__, '_template_include_9999999' ), 9999999 );
   }
 
   /**
@@ -103,13 +103,13 @@ abstract class Exo_Controller_Base extends Exo_Base {
   * @param string $template_filepath
   * @return bool
   */
-  static function template_include_9999999() {
+  static function _template_include_9999999() {
     self::$_included_template = func_get_arg( 0 );
 
     if ( isset( $GLOBALS['posts'] ) && is_array( $GLOBALS['posts'] ) && 1 < $GLOBALS['posts'] ) {
-      $view = new Exo_Post_Collection_View( $GLOBALS['posts'] );
+      $view = new Exo_Post_Collection_View( new Exo_Post_Collection( $GLOBALS['posts'] ) );
     } else if ( isset( $GLOBALS['post'] ) && $GLOBALS['post'] instanceof WP_Post ) {
-      $view = new Exo_Post_View( $GLOBALS['post'] );
+      $view = new Exo_Post_View( new Exo_Post( $GLOBALS['post'] ) );
     }
 
     require( self::$_included_template );
@@ -296,11 +296,12 @@ abstract class Exo_Controller_Base extends Exo_Base {
    * @param string|Exo_Implementation $dir_or_implementation
    * @param array $args
    */
-  static function register_implementation( $class_name, $dir_or_implementation, $args = array() ) {
-    if ( ! isset( self::$_implementations[$class_name] ) ) {
+  static function register_implementation( $dir_or_implementation, $args = array() ) {
+    if ( ! isset( self::$_implementations[$class_name = get_called_class()] ) ) {
       $args = wp_parse_args( $args, array(
         'make_global'      => false,
         'full_prefix'      => "{$class_name}_",
+        'short_prefix'     => strtolower( self::_get_capital_letters( $class_name ) ) . '_',
         'controller_class' => $class_name,
       ));
       if ( is_string( $dir_or_implementation ) ) {
@@ -314,6 +315,17 @@ abstract class Exo_Controller_Base extends Exo_Base {
         $GLOBALS[$class_name] = $implementation;
       }
     }
+  }
+
+  /**
+   * Return only the capital letters in a string
+   *
+   * @param $string
+   *
+   * @return bool|string
+   */
+  private static function _get_capital_letters( $string ) {
+    return preg_match_all( '#([A-Z]+)#', $string, $matches ) ? implode( $matches[1] ) : false;
   }
 
   /**

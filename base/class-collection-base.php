@@ -8,7 +8,7 @@
  * A Collection is an object containing an internal array of models.
  *
  */
-abstract class Exo_Collection_Base extends Exo_Instance_Base {
+abstract class Exo_Collection_Base extends Exo_Instance_Base implements ArrayAccess {
   const MODEL = 'post';
 
   /**
@@ -40,4 +40,65 @@ abstract class Exo_Collection_Base extends Exo_Instance_Base {
     }
     return $return;
   }
+
+  /**
+   * @return int
+   */
+  function count() {
+    return count( $this->_items );
+  }
+
+  /**
+   * @param int|string $index
+   *
+   * @return bool
+   */
+  function offsetExists( $index ) {
+    return isset( $this->_items[$index] );
+  }
+
+  /**
+   * @param int|string $index
+   *
+   * @return bool
+   */
+  function offsetGet( $index ) {
+    if ( $this->offsetExists( $index ) ) {
+      return $this->_items[$index];
+    }
+    return false;
+  }
+
+  /**
+   * @param int|string $index
+   * @param mixed $value
+   *
+   * @return bool
+   */
+  function offsetSet( $index, $value ) {
+    if ( $index ) {
+      $this->_items[$index] = $value;
+    } else {
+      $this->_items[] = $value;
+    }
+    return true;
+  }
+
+  /**
+   * @param int|string $index
+   *
+   * @return bool
+   */
+  function offsetUnset( $index ) {
+    unset( $this->_items[$index] );
+    return true;
+  }
+
+  /**
+   * @return array
+   */
+  function to_items() {
+    return $this->_items;
+  }
+
 }

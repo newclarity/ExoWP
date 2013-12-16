@@ -69,10 +69,12 @@ class _Exo_Helpers extends Exo_Helpers_Base {
       if ( isset( $call['object'] ) && isset( $call['type'] ) ) {
         $function = get_class( $call['object'] ) . "{$call['type']}{$function}";
       }
-      $message[] = "\n  " . sprintf( __( 'Called %s in %s on line %s', 'exo' ), $function, $call['file'], $call['line'] );
+      if ( isset( $call['file'] ) && isset( $call['line'] ) ) {
+        $message[] = "\n  " . sprintf( __( 'Called %s in %s on line %s', 'exo' ), $function, $call['file'], $call['line'] );
+      }
     }
     $message[] = "\n  " . __( 'Called ' . __CLASS__ . '::trigger_error()', 'exo' );
-    Exo::trigger_warning( implode( $message ) );
+    trigger_error( implode( $message ), E_USER_WARNING );
   }
 
   /**

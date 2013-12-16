@@ -8,21 +8,21 @@ abstract class Exo_Model_Base extends Exo_Instance_Base {
   /**
    * @var object
    */
-  private $_object;
+  private $_item;
 
   /**
    * @param bool|object $object
    */
   function __construct( $object = false ) {
     parent::__construct();
-    $this->_object = $object;
+    $this->_item = $object;
   }
 
   /**
    * @return object
    */
-  function to_object() {
-    return $this->_object;
+  function to_item() {
+    return $this->_item;
   }
 
 }

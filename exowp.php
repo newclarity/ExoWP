@@ -1,6 +1,6 @@
 <?php
 
-define( 'EXO_VERSION', '0.1.4' );
+define( 'EXO_VERSION', '0.1.5' );
 
 /**
  * Initialize Exo using the 'plugins_loaded' or 'after_setup_theme' hooks, at priority 9
@@ -25,7 +25,7 @@ class Exo extends Exo_Library_Base {
     /**
      * First we register Exo to use Exo_Implementation.
      */
-    self::register_implementation( __CLASS__, __DIR__ );
+    self::register_implementation( __DIR__, array( 'short_prefix' => 'exo_' ) );
 
     /**
      * Register any autoload dirs or helpers here.
