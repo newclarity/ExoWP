@@ -6,9 +6,21 @@
 abstract class Exo_Base {
 
   /**
-   * Placeholder for potential future use.
+   * @param array $args
    */
-  function __construct() {
+  function __construct( $args = array() ) {
+    $this->apply_args( $args );
+  }
+
+  /**
+   * @param array $args
+   */
+  function apply_args( $args ) {
+    foreach( $args as $name => $value ) {
+      if ( property_exists( $this, $name ) || property_exists( $this, $name = "_{$name}" ) ) {
+        $this->$name = $value;
+      }
+    }
   }
 
   /**

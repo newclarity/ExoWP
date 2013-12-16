@@ -8,12 +8,12 @@ class Exo_Implementation extends Exo_Instance_Base {
   /**
    * @var string Prefix for Class name for child class.
    */
-  var $class_prefix = 'Exo_';
+  var $full_prefix = false;
 
   /**
    * @var bool
    */
-  var $post_type_prefix = 'exo_';
+  var $short_prefix = false;
 
   /**
    * @var Exo_Controller_Base Class that "owns" this implementation.
@@ -51,10 +51,11 @@ class Exo_Implementation extends Exo_Instance_Base {
   private $_helper_callables = array();
 
   /**
-   *
+   * @param string $dir
+   * @param array $args
    */
-  function __construct( $dir ) {
-
+  function __construct( $dir, $args = array() ) {
+    parent::__construct( $args );
     /*
      * Capture the URI for the root of this plugin. Assumes this plugin is in a subdirectory of the site root.
      */
@@ -74,6 +75,7 @@ class Exo_Implementation extends Exo_Instance_Base {
       $this->register_exo_autoload_dirs();
       $this->require_exo_base_classes();
     }
+
   }
 
   /**
@@ -173,7 +175,8 @@ class Exo_Implementation extends Exo_Instance_Base {
   }
 
   /**
-   * Load the autoloader. Implmented as a method so it can be overridden in child class.
+   * Load the autoloader.
+   * Implemented as a method so it can be overridden in child class if needed.
    */
   function require_exo_autoloader() {
     require(__DIR__ . '/../core/class-autoloader.php');
@@ -182,6 +185,7 @@ class Exo_Implementation extends Exo_Instance_Base {
   /**
    * Make the autoloadered an Exo helper to make it simplier for themers
    * We called register_autoload_dir() directly using Exo_Autoloader for (tiny) performance improvement.
+   * Implemented as a method so it can be overridden in child class if needed.
    */
   function register_exo_mvc_autoload_dirs() {
     $autoloader = $this->autoloader;
@@ -191,11 +195,14 @@ class Exo_Implementation extends Exo_Instance_Base {
     $autoloader->register_autoload_dir( __DIR__ . '/../mixins', 'Exo_' );
     $autoloader->register_autoload_dir( __DIR__ . '/../collections', 'Exo_' );
     $autoloader->register_autoload_dir( __DIR__ . '/../views', 'Exo_' );
+    // @todo More to come here...
+
   }
 
   /**
    * Make the autoloadered an Exo helper to make it simplier for themers
    * We called register_autoload_dir() directly using Exo_Autoloader for (tiny) performance improvement.
+   * Implemented as a method so it can be overridden in child class if needed.
    */
   function register_exo_autoload_dirs() {
     $autoloader = $this->autoloader;
@@ -203,6 +210,10 @@ class Exo_Implementation extends Exo_Instance_Base {
     $autoloader->register_autoload_dir( __DIR__ . '/../helpers', 'Exo_' );
   }
 
+  /**
+   * Enable MVC classes.
+   * Implemented as a method so it can be overridden in child class if needed.
+   */
   function enable_mvc() {
     $this->require_exo_mvc_classes();
     $this->register_exo_mvc_autoload_dirs();
@@ -210,7 +221,8 @@ class Exo_Implementation extends Exo_Instance_Base {
 
   /**
    * Load the MVC classes.
-   * Don't use autoloader if we know we need these.
+   * Don't autoload these as we already know we always need these.
+   * Implemented as a method so it can be overridden in child class if needed.
    */
   function require_exo_mvc_classes() {
 
@@ -223,7 +235,8 @@ class Exo_Implementation extends Exo_Instance_Base {
 
   /**
    * Load the core classes for Exo, ones that Exo cannot otherwise function without.
-   * Don't use autoloader because we always need these.
+   * Don't autoload these as we already know we always need these.
+   * Implemented as a method so it can be overridden in child class if needed.
    */
   function require_exo_base_classes() {
     /**
@@ -235,6 +248,8 @@ class Exo_Implementation extends Exo_Instance_Base {
      * Now load the always loaded helper classes
      */
     require(__DIR__ . '/../helpers/-class-helpers.php');
+    require(__DIR__ . '/../helpers/-class-meta-helpers.php');
+    require(__DIR__ . '/../helpers/-class-post-helpers.php');
     // @todo More to come here...
 
   }

@@ -122,7 +122,7 @@ abstract class Exo_Controller_Base extends Exo_Base {
    *
   * @return string
   */
-  static function get_included_template() {
+  static function included_template() {
     return self::$_included_template;
   }
 
@@ -177,6 +177,42 @@ abstract class Exo_Controller_Base extends Exo_Base {
   static function theme_uri( $path = false ) {
     return $path ? "{self::$_theme_uri}/" . ltrim( $path, '/' ) : self::$_theme_uri;
   }
+
+  /**
+   * Returns the URI/URL for the theme dir for this site. If it has a parent theme, it returns the child theme's dir.
+   *
+   * @note Does not contain a trailing slash if no $path is passed.
+   *
+   * @param bool|string $path
+   *
+   * @return string
+   */
+  static function theme_url( $path = false ) {
+    return self::theme_uri( $path );
+  }
+
+  /**
+   * Echos the URI/URL for the theme dir for this site. If it has a parent theme, it returns the child theme's dir.
+   *
+   * @note Does not contain a trailing slash if no $path is passed.
+   *
+   * @param bool|string $path
+   */
+  static function the_theme_uri( $path = false ) {
+    echo self::theme_uri( $path );
+  }
+
+  /**
+   * Echos the URI/URL for the theme dir for this site. If it has a parent theme, it returns the child theme's dir.
+   *
+   * @note Does not contain a trailing slash if no $path is passed.
+   *
+   * @param bool|string $path
+   */
+  static function the_theme_url( $path = false ) {
+    echo self::theme_uri( $path );
+  }
+
   /**
    * Returns true if a Development Deployment.
    *
@@ -218,7 +254,7 @@ abstract class Exo_Controller_Base extends Exo_Base {
    *
    * @return string
    */
-  static function get_runmode() {
+  static function runmode() {
     return self::$_runmode;
   }
 
@@ -249,7 +285,7 @@ abstract class Exo_Controller_Base extends Exo_Base {
   /**
    * @return Exo_Implementation
    */
-  static function get_implementation() {
+  static function implementation() {
     return isset( self::$_implementations[$class_name = get_called_class()] ) ? self::$_implementations[$class_name] : false;
   }
 
@@ -263,38 +299,37 @@ abstract class Exo_Controller_Base extends Exo_Base {
   static function register_implementation( $class_name, $dir_or_implementation, $args = array() ) {
     if ( ! isset( self::$_implementations[$class_name] ) ) {
       $args = wp_parse_args( $args, array(
-        'make_global' => false,
+        'make_global'      => false,
+        'full_prefix'      => "{$class_name}_",
+        'controller_class' => $class_name,
       ));
-      $implementation = is_string( $dir_or_implementation ) ? new Exo_Implementation( $dir_or_implementation ) : $dir_or_implementation;
-      $implementation->class_prefix = "{$class_name}_";
-      $implementation->controller_class = $class_name;
-
-      foreach( $args as $name => $value ) {
-        if ( property_exists( $implementation, $name ) ) {
-          $implementation->$name = $value;
-        } else if ( property_exists( $implementation, $name = "_{$name}" ) ) {
-          $implementation->$name = $value;
-        }
+      if ( is_string( $dir_or_implementation ) ) {
+        $implementation = new Exo_Implementation( $dir_or_implementation, $args );
+      } else {
+        $implementation = $dir_or_implementation;
+        $implementation->apply_args( $args );
       }
-
       self::$_implementations[$class_name] = $implementation;
       if ( $args['make_global'] ) {
-        $GLOBALS[$class_name] = $instance;
+        $GLOBALS[$class_name] = $implementation;
       }
     }
   }
 
   /**
-   * Allows a class that extends from Exo_Controller_Base to register an instance of Exo_Instance_Core
-   *
-   * @param string $class_prefix
-   * @note This method may go away.
+   * @return bool
    */
-  static function register_class_prefix( $class_prefix ) {
-    if ( isset( self::$_implementations[$called_class = get_called_class()] ) ) {
-      self::$_implementations[$called_class]->class_prefix = $class_prefix;
-    }
+  static function short_prefix() {
+    return Exo::implementation()->short_prefix;
   }
+
+  /**
+   * @return bool
+   */
+  static function full_prefix() {
+    return Exo::implementation()->full_prefix;
+  }
+
 
   /**
    * Initialize the Main and Implementation classes.
@@ -312,6 +347,13 @@ abstract class Exo_Controller_Base extends Exo_Base {
        * @var Exo_Implementation $implementation
        */
       $implementation = self::$_implementations[$called_class];
+
+      /**
+       * @todo Add line to onload for each helper class w/o need to define .on-load.php files.
+       *       The line should look like this:
+       *
+       *       <?php Helpers Exo::register_helper( '<helper_class_name>' );
+       */
 
       $onload_php = $implementation->dir( '/on-load.php' );
       if ( self::is_dev_mode() ) {

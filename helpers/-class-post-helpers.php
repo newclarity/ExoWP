@@ -60,7 +60,7 @@ class _Exo_Post_Helpers extends Exo_Helpers_Base {
     }
 
     if ( ! isset( $args['label'] ) ) {
-      $args['label'] = preg_replace( '#^' . preg_quote( Exo::get_post_type_prefix() ) . '(.*)$#', '$1', "{$post_type}s" );
+      $args['label'] = preg_replace( '#^' . preg_quote( Exo::short_prefix() ) . '(.*)$#', '$1', "{$post_type}s" );
     }
 
     if ( ! isset( $args['singular_label'] ) ) {

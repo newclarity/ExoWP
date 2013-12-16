@@ -51,10 +51,10 @@ abstract class Exo_Instance_Base extends Exo_Base {
   }
 
   /**
-   *
+   * @param array $args
    */
-  function __construct() {
-    parent::__construct();
+  function __construct( $args = array() ) {
+    parent::__construct( $args );
     self::_instantiate_mixins( $this );
   }
 

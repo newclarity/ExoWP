@@ -68,8 +68,8 @@ class Exo_Autoloader extends Exo_Base {
    * @param bool|string $prefix
    */
   function register_autoload_dir( $dir, $prefix = false ) {
-    if ( ! $prefix && $this->owner->class_prefix ) {
-      $prefix = $this->owner->class_prefix;
+    if ( ! $prefix && $this->owner->full_prefix ) {
+      $prefix = $this->owner->full_prefix;
     }
     $this->_autoload_dirs[realpath( $dir )] = $prefix;
     /*

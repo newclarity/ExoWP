@@ -265,18 +265,4 @@ class _Exo_Helpers extends Exo_Helpers_Base {
     return $_permutations;
   }
 
-  /**
-   * @return bool
-   */
-  static function get_post_type_prefix() {
-    return Exo::get_implementation()->post_type_prefix;
-  }
-
-  /**
-   * @return bool
-   */
-  static function get_class_prefix() {
-    return Exo::get_implementation()->class_prefix;
-  }
-
 }
