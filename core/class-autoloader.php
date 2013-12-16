@@ -101,16 +101,11 @@ class Exo_Autoloader extends Exo_Base {
    */
   private function _add_autoloader_classes() {
     foreach ( $this->_autoload_dirs as $dir => $prefix ) {
-      $prefix = strtolower( $prefix );
       foreach ( glob( "{$dir}/*.php" ) as $filepath ) {
         if ( preg_match( '#\.on-load\.php$#', $filepath ) ) {
           $this->_onload_filepaths[] = $filepath;
-        } else {
-          preg_match( '#^(.*)/((-?)class-)?(.*?)\.php$#', $filepath, $matches );
-          $class_name = str_replace( '-', '_', preg_replace( '#^(.*)/((-?)class-)?(.*?)\.php$#', "$3{$prefix}$4", $filepath ) );
-          if ( ! class_exists( $class_name ) ) {
-            $this->_autoload_classes[$class_name] = $filepath;
-          }
+        } else if ( ! class_exists( $class_name = $this->derive_class_name( $prefix, $filepath ) ) ) {
+          $this->_autoload_classes[$class_name] = $filepath;
         }
       }
     }
@@ -118,6 +113,19 @@ class Exo_Autoloader extends Exo_Base {
      * Clear this list out so we don't processes them again.
      */
     $this->_autoload_dirs = array();
+  }
+
+  /**
+   * Derive class name given a qualifying class filename.
+   *
+   * @param string $prefix
+   * @param string $filepath
+   *
+   * @return mixed
+   */
+  function derive_class_name( $prefix, $filepath ) {
+    $class_name = str_replace( array( '-', '_' ), ' ', preg_replace( '#^(.*)/((-?)class-)?(.*?)(\.on-load)?\.php$#', "$3{$prefix}$4", $filepath ) );
+    return str_replace( ' ', '_', ucwords( $class_name ) );
   }
 
   /**
@@ -143,6 +151,19 @@ class Exo_Autoloader extends Exo_Base {
     return "<?php\n" . implode( $onload_files_content );
   }
 
+  function get_helper_onloaders() {
+    $helpers_php = array();
+    $implementation = $this->owner;
+    foreach ( glob( $implementation->dir( '/helpers/*.php' ) ) as $filepath ) {
+      $filepath = realpath( $filepath );
+      $class_name = $implementation->autoloader->derive_class_name( $implementation->full_prefix, $filepath );
+      $helpers_php[$class_name] = "\n{$implementation->controller_class}::register_helper( '{$class_name}' );";
+    }
+    return $helpers_php;
+  }
+
+
+
   /**
    *  Scans through the autoload dirs and adds the potential classes based on .php file names.
    *
@@ -159,7 +180,6 @@ class Exo_Autoloader extends Exo_Base {
    * @param string $class_name
    */
   function _autoload( $class_name ) {
-    $class_name = strtolower( $class_name );
     if ( isset( $this->_autoload_classes[$class_name] ) ) {
       require($this->_autoload_classes[$class_name]);
       unset($this->_autoload_classes[$class_name]);

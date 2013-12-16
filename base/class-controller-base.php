@@ -358,6 +358,10 @@ abstract class Exo_Controller_Base extends Exo_Base {
       $onload_php = $implementation->dir( '/on-load.php' );
       if ( self::is_dev_mode() ) {
         $autoloader = $implementation->autoloader;
+        foreach( $helper_onloaders = $autoloader->get_helper_onloaders() as $filepath => $content ) {
+          $class_name = $autoloader->derive_class_name( $implementation->full_prefix, $filepath );
+          Exo::register_helper( $class_name );
+        }
         foreach( $autoloader->get_onload_filepaths() as $filepath ) {
           require( $filepath );
         }
@@ -365,7 +369,7 @@ abstract class Exo_Controller_Base extends Exo_Base {
          * Now generate the new /on-load.php, if content has been updated.
          */
         $old_content = is_file( $onload_php ) ? file_get_contents( $onload_php ) : false;
-        $new_content = $autoloader->get_onload_files_content();
+        $new_content = $autoloader->get_onload_files_content() . implode( "\n", $helper_onloaders );
         if ( $new_content != $old_content ) {
           file_put_contents( $onload_php, $new_content );
         }
