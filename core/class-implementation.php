@@ -75,7 +75,17 @@ class Exo_Implementation extends Exo_Instance_Base {
       $this->register_exo_autoload_dirs();
       $this->require_exo_base_classes();
     }
+    $this->add_instance_filter( 'exo_generate_onload' );
 
+  }
+
+  /**
+   * @param $onload_code
+   *
+   * @return array
+   */
+  function _exo_generate_onload( $onload_code ) {
+    return $this->autoloader->generate_onload( $onload_code );
   }
 
   /**

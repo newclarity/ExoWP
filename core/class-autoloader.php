@@ -3,13 +3,9 @@
 /**
  * Class Exo_Autoloader
  *
+ * @property Exo_Implementation $owner
  */
 class Exo_Autoloader extends Exo_Base {
-
-  /**
-   * @var Exo_Implementation Class that owns this autoloader
-   */
-  private $owner;
 
   /**
    * @var array List of registered directories in which classes can be found.
@@ -37,9 +33,21 @@ class Exo_Autoloader extends Exo_Base {
     /**
      * Add hooks for this class
      */
-    add_action( 'init', array( $this, 'init_9' ), 9 );
-    add_action( 'exo_autoloader_classes', array( $this, 'exo_autoloader_classes' ) );
+    add_action( 'init', array( $this, '_init_9' ), 9 );
+    add_action( 'exo_autoloader_classes', array( $this, '_exo_autoloader_classes' ) );
 
+  }
+  function generate_onload( $onload_code ) {
+    foreach( $this->_get_onload_filepaths() as $filepath ) {
+      require( $filepath );
+    }
+    $onload_code = $this->_get_onload_files_content( $onload_code );
+    foreach( $helper_onloaders = $this->_get_helper_onloaders() as $filepath => $php_code ) {
+      $class_name = $this->derive_class_name( $this->owner->full_prefix, $filepath );
+      Exo::register_helper( $class_name );
+      $onload_code[] = $php_code;
+    }
+    return $onload_code;
   }
 
   /**
@@ -83,14 +91,14 @@ class Exo_Autoloader extends Exo_Base {
   /**
    *
    */
-  function init_9() {
+  function _init_9() {
     $this->_add_autoloader_classes();
   }
 
   /**
    *
    */
-  function exo_autoloader_classes( $called_class ) {
+  function _exo_autoloader_classes( $called_class ) {
     if ( $called_class == $this->owner->controller_class ) {
       $this->_add_autoloader_classes();
     }
@@ -131,6 +139,8 @@ class Exo_Autoloader extends Exo_Base {
   /**
    * Returns the array of autoload directories.
    *
+   * @todo Add check to ensure not called before it's valid.
+   *
    * @return array
    */
   function get_autoload_dirs() {
@@ -140,29 +150,26 @@ class Exo_Autoloader extends Exo_Base {
   /**
    *  Scans through the autoload dirs and adds the potential classes based on .php file names.
    */
-  function get_onload_files_content() {
-    $onload_files_content = array();
+  private function _get_onload_files_content( $onload_files_content ) {
     $basepath_regex = preg_quote( $this->owner->dir() );
-    foreach ( $this->get_onload_filepaths() as $filepath ) {
+    foreach ( $this->_get_onload_filepaths() as $filepath ) {
       $local_filepath = preg_replace( "#^{$basepath_regex}(.*?)$#", '$1', $filepath = realpath( $filepath ) );
       $onload_files_content[] = "/**\n * File: {$local_filepath}\n */";
-      $onload_files_content[] = preg_replace( '#^\s*<\?php\s*(.*?)\s*$#misU', '$1', file_get_contents( $filepath ) ) . "\n";
+      $onload_files_content[] = trim( preg_replace( '#^\s*<\?php\s*(.*?)\s*$#misU', '$1', file_get_contents( $filepath ) ) );
     }
-    return "<?php\n" . implode( $onload_files_content );
+    return $onload_files_content;
   }
 
-  function get_helper_onloaders() {
+  private function _get_helper_onloaders() {
     $helpers_php = array();
     $implementation = $this->owner;
     foreach ( glob( $implementation->dir( '/helpers/*.php' ) ) as $filepath ) {
       $filepath = realpath( $filepath );
-      $class_name = $implementation->autoloader->derive_class_name( $implementation->full_prefix, $filepath );
-      $helpers_php[$class_name] = "\n{$implementation->controller_class}::register_helper( '{$class_name}' );";
+      $class_name = $this->derive_class_name( $implementation->full_prefix, $filepath );
+      $helpers_php[$class_name] = "{$implementation->controller_class}::register_helper( '{$class_name}' );";
     }
     return $helpers_php;
   }
-
-
 
   /**
    *  Scans through the autoload dirs and adds the potential classes based on .php file names.
@@ -170,7 +177,7 @@ class Exo_Autoloader extends Exo_Base {
    * This MUST be called after hook _after_setup_theme_8() is run.
    * @todo Add check to ensure not called before it's valid.
    */
-  function get_onload_filepaths() {
+  private function _get_onload_filepaths() {
     return $this->_onload_filepaths;
   }
 

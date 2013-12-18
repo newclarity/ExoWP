@@ -292,7 +292,6 @@ abstract class Exo_Controller_Base extends Exo_Base {
   /**
    * Registers a class to start being extended by helpers.
    *
-   * @param string $class_name
    * @param string|Exo_Implementation $dir_or_implementation
    * @param array $args
    */
@@ -342,6 +341,108 @@ abstract class Exo_Controller_Base extends Exo_Base {
     return Exo::implementation()->full_prefix;
   }
 
+  /**
+   * @param object $instance
+   * @param string $action
+   * @param bool|int|callable $callable_or_priority
+   * @param int $priority
+   *
+   * @return bool|void
+   */
+  static function add_instance_action( $instance, $action, $callable_or_priority = false, $priority = 10 ) {
+    return self::add_instance_filter( $instance, $action, $callable_or_priority, $priority );
+  }
+
+  /**
+   * @param object $instance
+   * @param string $filter
+   * @param bool|int|callable $callable_or_priority
+   * @param int $priority
+   *
+   * @return bool|void
+   */
+  static function add_instance_filter( $instance, $filter, $callable_or_priority = false, $priority = 10 ) {
+    if ( false === $callable_or_priority ) {
+      $callable = array( $instance, "_{$filter}" );
+    } else if ( is_callable( $callable_or_priority ) ) {
+      $callable = $callable_or_priority;
+    } else if ( is_numeric( $callable_or_priority ) ) {
+      $callable = array( $instance, $filter );
+      $priority = $callable_or_priority;
+    }
+    if ( 10 <> $priority ) {
+      $callable[1] .= "_{$priority}";
+    }
+    $object_hash = spl_object_hash( $instance );
+    return add_filter( "{$object_hash}->{$filter}()", $callable, $priority, 99 );
+  }
+
+  /**
+   * @param object $instance
+   * @param string $action
+   * @param bool|int|callable $callable_or_priority
+   * @param int $priority
+   *
+   * @return bool
+   */
+  static function remove_instance_action( $instance, $action, $callable_or_priority = false, $priority = 10 ) {
+    return self::remove_instance_filter( $instance, $action, $callable_or_priority, $priority = 10 );
+  }
+
+  /**
+   * @param object $instance
+   * @param string $filter
+   * @param int|callable $callable_or_priority
+   * @param int $priority
+   *
+   * @return bool|void
+   */
+  static function remove_instance_filter( $instance, $filter, $callable_or_priority, $priority = 10 ) {
+    if ( is_callable( $callable_or_priority ) ) {
+      $callable = $callable_or_priority;
+    } else if ( is_numeric( $callable_or_priority ) ) {
+      $callable = array( $instance, $filter );
+      $priority = $callable_or_priority;
+    }
+    if ( 10 <> $priority ) {
+      $callable[1] .= "_{$priority}";
+    }
+    $object_hash = spl_object_hash( $instance );
+    return remove_filter( "{$object_hash}->{$filter}()", $callable, $priority, 99 );
+  }
+
+  /**
+   * @param object $instance
+   * @param string $action
+   * @param mixed $arg1
+   * @param bool|mixed $arg2
+   * @param bool|mixed $arg3
+   * @param bool|mixed $arg4
+   * @param bool|mixed $arg5
+   *
+   * @return mixed
+   */
+  static function do_instance_action( $instance, $action, $arg1, $arg2 = false, $arg3 = false, $arg4 = false, $arg5 = false ) {
+    return self::apply_instance_filters( $instance, $filter, $arg1, $arg2 , $arg3 , $arg4 , $arg5 = false );
+  }
+
+  /**
+   * @param object $instance
+   * @param string $filter
+   * @param mixed $arg1
+   * @param bool|mixed $arg2
+   * @param bool|mixed $arg3
+   * @param bool|mixed $arg4
+   * @param bool|mixed $arg5
+   *
+   * @return mixed
+   */
+  static function apply_instance_filters( $instance, $filter, $arg1, $arg2 = false, $arg3 = false, $arg4 = false, $arg5 = false ) {
+    $args = func_get_args();
+    array_shift( $args );
+    $args[0] = spl_object_hash( $instance ) . "->{$filter}()";
+    return call_user_func_array( 'apply_filters', $args );
+  }
 
   /**
    * Initialize the Main and Implementation classes.
@@ -367,26 +468,19 @@ abstract class Exo_Controller_Base extends Exo_Base {
        *       <?php Helpers Exo::register_helper( '<helper_class_name>' );
        */
 
-      $onload_php = $implementation->dir( '/on-load.php' );
+      $onload_file = $implementation->dir( '/on-load.php' );
       if ( self::is_dev_mode() ) {
-        $autoloader = $implementation->autoloader;
-        foreach( $helper_onloaders = $autoloader->get_helper_onloaders() as $filepath => $content ) {
-          $class_name = $autoloader->derive_class_name( $implementation->full_prefix, $filepath );
-          Exo::register_helper( $class_name );
-        }
-        foreach( $autoloader->get_onload_filepaths() as $filepath ) {
-          require( $filepath );
-        }
-        /**
-         * Now generate the new /on-load.php, if content has been updated.
-         */
-        $old_content = is_file( $onload_php ) ? file_get_contents( $onload_php ) : false;
-        $new_content = $autoloader->get_onload_files_content() . implode( "\n", $helper_onloaders );
+        $old_content = is_file( $onload_file ) ? file_get_contents( $onload_file ) : false;
+        $onload_code = self::apply_instance_filters( $implementation, 'exo_generate_onload', array( "<?php\n" ) );
+        $new_content = implode( "\n", $onload_code );
         if ( $new_content != $old_content ) {
-          file_put_contents( $onload_php, $new_content );
+          /**
+           * Generate the new /on-load.php, if content has been updated.
+           */
+          file_put_contents( $onload_file, $new_content );
         }
       } else {
-        require( $onload_php );
+        require( $onload_file );
       }
 
       $implementation->fixup_registered_helpers();
