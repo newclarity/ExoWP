@@ -7,5 +7,7 @@
  * theme child class of an Exo_Static_Base to invoke the helper's methods as if they were the methods of the main class.
  */
 abstract class Exo_Helpers_Base extends Exo_Base {
+  static $main_class;
+
 
 }

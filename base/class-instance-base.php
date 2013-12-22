@@ -27,11 +27,6 @@ abstract class Exo_Instance_Base extends Exo_Base {
    */
   private $_mixin_instances_by_classname = array();
 
-  /**
-   * @var array Current instance hashes and their hooked actions and filters.
-   */
-  private static $_instance_hooks = array();
-
   static function on_load() {
     /**
      * @todo Change these to use self::add_static_action() once we test that and get it working.
@@ -209,6 +204,50 @@ abstract class Exo_Instance_Base extends Exo_Base {
   }
 
   /**
+   * @param string $action
+   * @param bool|int|callable $callable_or_priority
+   * @param int $priority
+   *
+   * @return bool|void
+   */
+  function add_action( $action, $callable_or_priority = false, $priority = 10 ) {
+    return self::add_filter( $action, $callable_or_priority, $priority );
+  }
+
+  /**
+   * @param string $filter
+   * @param bool|int|callable $callable_or_priority
+   * @param int $priority
+   *
+   * @return bool|void
+   */
+  function add_filter( $filter, $callable_or_priority = false, $priority = 10 ) {
+    if ( false === $callable_or_priority ) {
+      $callable = array( $this, "_{$filter}" );
+    } else if ( is_callable( $callable_or_priority ) ) {
+      $callable = $callable_or_priority;
+    } else if ( is_numeric( $callable_or_priority ) ) {
+      $callable = array( $this, $filter );
+      $priority = $callable_or_priority;
+    }
+    if ( 10 <> $priority && isset( $callable[1] ) && ! preg_match( "#_{$priority}$#", $callable[1] ) ) {
+      $callable[1] .= "_{$priority}";
+    }
+    return add_filter( $filter, $callable, $priority, 99 );
+  }
+
+  /**
+   * @param string $action
+   * @param bool|int|callable $callable_or_priority
+   * @param int $priority
+   *
+   * @return bool|void
+   */
+  function add_instance_action( $action, $callable_or_priority = false, $priority = 10 ) {
+    return _Exo_Hook_Helpers::add_instance_filter( $this, $action, $callable_or_priority, $priority );
+  }
+
+  /**
    * @param string $filter
    * @param bool|int|callable $callable_or_priority
    * @param int $priority
@@ -216,45 +255,34 @@ abstract class Exo_Instance_Base extends Exo_Base {
    * @return bool|void
    */
   function add_instance_filter( $filter, $callable_or_priority = false, $priority = 10 ) {
-    return Exo::add_instance_filter( $this, $filter, $callable_or_priority, $priority );
-  }
-
-  /**
-   * @param string $action
-   * @param int|callable $callable_or_priority
-   * @param int $priority
-   *
-   * @return bool|void
-   */
-  function add_instance_action( $action, $callable_or_priority = false, $priority = 10 ) {
-    return Exo::add_instance_action( $this, $action, $callable_or_priority, $priority );
+    return _Exo_Hook_Helpers::add_instance_filter( $this, $filter, $callable_or_priority, $priority );
   }
 
   /**
    * @param string $filter
-   * @param int|callable $callable_or_priority
+   * @param bool|int|callable $callable_or_priority
    * @param int $priority
    *
    * @return bool|void
    */
   function remove_instance_filter( $filter, $callable_or_priority = false, $priority = 10 ) {
-    return Exo::remove_instance_filter( $this, $filter, $callable_or_priority, $priority );
+    return _Exo_Hook_Helpers::remove_instance_filter( $this, $filter, $callable_or_priority, $priority );
   }
 
   /**
    * @param string $action
-   * @param int|callable $callable_or_priority
+   * @param bool|int|callable $callable_or_priority
    * @param int $priority
    *
    * @return bool|void
    */
   function remove_instance_action( $action, $callable_or_priority = false, $priority = 10 ) {
-    return Exo::remove_instance_filter( $this, $action, $callable_or_priority, $priority );
+    return _Exo_Hook_Helpers::remove_instance_filter( $this, $action, $callable_or_priority, $priority );
   }
 
   /**
    * @param string $filter
-   * @param mixed $arg1
+   * @param bool|mixed $arg1
    * @param bool|mixed $arg2
    * @param bool|mixed $arg3
    * @param bool|mixed $arg4
@@ -262,7 +290,7 @@ abstract class Exo_Instance_Base extends Exo_Base {
    *
    * @return mixed
    */
-  function apply_instance_filters( $filter, $arg1, $arg2 = false, $arg3 = false, $arg4 = false, $arg5 = false ) {
+  function apply_instance_filters( $filter, $arg1 = false, $arg2 = false, $arg3 = false, $arg4 = false, $arg5 = false ) {
     $args = func_get_args();
     array_unshift( $args, $this );
     return call_user_func_array( array( 'Exo', 'apply_instance_filters' ), $args );
@@ -270,15 +298,15 @@ abstract class Exo_Instance_Base extends Exo_Base {
 
   /**
    * @param string $action
-   * @param mixed $arg1
-   * @param mixed $arg2
-   * @param mixed $arg3
-   * @param mixed $arg4
-   * @param mixed $arg5
+   * @param bool|mixed $arg1
+   * @param bool|mixed $arg2
+   * @param bool|mixed $arg3
+   * @param bool|mixed $arg4
+   * @param bool|mixed $arg5
    *
    * @return mixed
    */
-  function do_instance_action( $action, $arg1, $arg2, $arg3, $arg4, $arg5 ) {
+  function do_instance_action( $action, $arg1 = false, $arg2 = false, $arg3 = false, $arg4 = false, $arg5 = false ) {
     $args = func_get_args();
     $args[0] = spl_object_hash( $this ) . "->{$action}()";
     call_user_func_array( 'do_action', $args );

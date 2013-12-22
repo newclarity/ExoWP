@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Class Exo_Controller_Base
+ * Class Exo_Main_Base
  *
  * Base classes for Main Classes for an implementation.
  *
@@ -11,6 +11,7 @@
  * @mixin _Exo_Helpers
  * @mixin _Exo_Post_Helpers
  * @mixin _Exo_Meta_Helpers
+ * @mixin _Exo_File_Helpers
  *
  * @mixin Exo_Implementation
  * @method static string uri( string $path = false )
@@ -37,7 +38,7 @@
  * @method static array get_onload_filepaths()
  *
  */
-abstract class Exo_Controller_Base extends Exo_Base {
+abstract class Exo_Main_Base extends Exo_Base {
 
   /**
    * @var array
@@ -62,7 +63,6 @@ abstract class Exo_Controller_Base extends Exo_Base {
   /**
    * @var string Target environment, must be one of 'dev', 'test', 'stage' or 'live.'
    *             Defaults to 'live' because that's the safest default.
-   * @todo Decide if this is correct or if we should have one runmode per implementation?
    */
   private static $_runmode = 'live';
 
@@ -95,12 +95,48 @@ abstract class Exo_Controller_Base extends Exo_Base {
      * Call as late as possible so that no other hooks modify after since I goal is to just capture the value.
      */
     add_action( 'template_include', array( __CLASS__, '_template_include_9999999' ), 9999999 );
+
+  }
+
+  /**
+   * @param string $class
+   * @param string $action
+   * @param bool|int|string|array $method_or_priority
+   * @param int $priority
+   *
+   * @return bool|void
+   */
+  static function add_static_action( $class, $action, $method_or_priority = false, $priority = 10 ) {
+    return _Exo_Hook_Helpers::add_static_filter( $class, $action, $method_or_priority, $priority );
+  }
+
+  /**
+   * @param string $class
+   * @param string $filter
+   * @param bool|int|string|array $method_or_priority
+   * @param int $priority
+   *
+   * @return bool|void
+   */
+  static function add_static_filter( $class, $filter, $method_or_priority = false, $priority = 10 ) {
+    return _Exo_Hook_Helpers::add_static_filter( $class, $filter, $method_or_priority, $priority );
+  }
+
+  /**
+   *
+   */
+  static function autoload_all() {
+    /**
+     * @var Exo_Implementation $implementation
+     */
+    foreach( self::$_implementations as $implementation ) {
+      $implementation->autoload_all();
+    }
   }
 
   /**
   * Capture filepath of the theme template file that was loaded by WordPress' template-loader.php into a static var.
    *
-  * @param string $template_filepath
   * @return bool
   */
   static function _template_include_9999999() {
@@ -111,8 +147,9 @@ abstract class Exo_Controller_Base extends Exo_Base {
     } else if ( isset( $GLOBALS['post'] ) && $GLOBALS['post'] instanceof WP_Post ) {
       $view = new Exo_Post_View( new Exo_Post( $GLOBALS['post'] ) );
     }
-
-    require( self::$_included_template );
+    if ( $view ) {
+      require( self::$_included_template );
+    }
 
     return dirname( __DIR__ ) . '/templates/empty.php';
   }
@@ -290,6 +327,13 @@ abstract class Exo_Controller_Base extends Exo_Base {
   }
 
   /**
+   * @return array
+   */
+  static function implementations() {
+    return self::$_implementations;
+  }
+
+  /**
    * Registers a class to start being extended by helpers.
    *
    * @param string|Exo_Implementation $dir_or_implementation
@@ -298,10 +342,10 @@ abstract class Exo_Controller_Base extends Exo_Base {
   static function register_implementation( $dir_or_implementation, $args = array() ) {
     if ( ! isset( self::$_implementations[$class_name = get_called_class()] ) ) {
       $args = wp_parse_args( $args, array(
-        'make_global'      => false,
-        'full_prefix'      => "{$class_name}_",
-        'short_prefix'     => strtolower( self::_get_capital_letters( $class_name ) ) . '_',
-        'controller_class' => $class_name,
+        'make_global'  => false,
+        'full_prefix'  => "{$class_name}_",
+        'short_prefix' => strtolower( self::_get_capital_letters( $class_name ) ) . '_',
+        'main_class'   => $class_name,
       ));
       if ( is_string( $dir_or_implementation ) ) {
         $implementation = new Exo_Implementation( $dir_or_implementation, $args );
@@ -344,76 +388,6 @@ abstract class Exo_Controller_Base extends Exo_Base {
   /**
    * @param object $instance
    * @param string $action
-   * @param bool|int|callable $callable_or_priority
-   * @param int $priority
-   *
-   * @return bool|void
-   */
-  static function add_instance_action( $instance, $action, $callable_or_priority = false, $priority = 10 ) {
-    return self::add_instance_filter( $instance, $action, $callable_or_priority, $priority );
-  }
-
-  /**
-   * @param object $instance
-   * @param string $filter
-   * @param bool|int|callable $callable_or_priority
-   * @param int $priority
-   *
-   * @return bool|void
-   */
-  static function add_instance_filter( $instance, $filter, $callable_or_priority = false, $priority = 10 ) {
-    if ( false === $callable_or_priority ) {
-      $callable = array( $instance, "_{$filter}" );
-    } else if ( is_callable( $callable_or_priority ) ) {
-      $callable = $callable_or_priority;
-    } else if ( is_numeric( $callable_or_priority ) ) {
-      $callable = array( $instance, $filter );
-      $priority = $callable_or_priority;
-    }
-    if ( 10 <> $priority ) {
-      $callable[1] .= "_{$priority}";
-    }
-    $object_hash = spl_object_hash( $instance );
-    return add_filter( "{$object_hash}->{$filter}()", $callable, $priority, 99 );
-  }
-
-  /**
-   * @param object $instance
-   * @param string $action
-   * @param bool|int|callable $callable_or_priority
-   * @param int $priority
-   *
-   * @return bool
-   */
-  static function remove_instance_action( $instance, $action, $callable_or_priority = false, $priority = 10 ) {
-    return self::remove_instance_filter( $instance, $action, $callable_or_priority, $priority = 10 );
-  }
-
-  /**
-   * @param object $instance
-   * @param string $filter
-   * @param int|callable $callable_or_priority
-   * @param int $priority
-   *
-   * @return bool|void
-   */
-  static function remove_instance_filter( $instance, $filter, $callable_or_priority, $priority = 10 ) {
-    if ( is_callable( $callable_or_priority ) ) {
-      $callable = $callable_or_priority;
-    } else if ( is_numeric( $callable_or_priority ) ) {
-      $callable = array( $instance, $filter );
-      $priority = $callable_or_priority;
-    }
-    if ( 10 <> $priority ) {
-      $callable[1] .= "_{$priority}";
-    }
-    $object_hash = spl_object_hash( $instance );
-    return remove_filter( "{$object_hash}->{$filter}()", $callable, $priority, 99 );
-  }
-
-  /**
-   * @param object $instance
-   * @param string $action
    * @param mixed $arg1
    * @param bool|mixed $arg2
    * @param bool|mixed $arg3
@@ -423,7 +397,7 @@ abstract class Exo_Controller_Base extends Exo_Base {
    * @return mixed
    */
   static function do_instance_action( $instance, $action, $arg1, $arg2 = false, $arg3 = false, $arg4 = false, $arg5 = false ) {
-    return self::apply_instance_filters( $instance, $filter, $arg1, $arg2 , $arg3 , $arg4 , $arg5 = false );
+    return self::apply_instance_filters( $instance, $action, $arg1, $arg2 , $arg3 , $arg4 , $arg5 );
   }
 
   /**
@@ -452,39 +426,25 @@ abstract class Exo_Controller_Base extends Exo_Base {
    *
    */
   static function initialize() {
-    if ( isset( self::$_implementations[$called_class = get_called_class()] ) ) {
 
-      do_action( 'exo_autoloader_classes', $called_class );
+    /**
+     * @var Exo_Implementation $implementation
+     */
+    if ( $implementation = self::implementation() ) {
 
-      /**
-       * @var Exo_Implementation $implementation
-       */
-      $implementation = self::$_implementations[$called_class];
+      $implementation->do_instance_action( 'exo_autoloader_classes' );
 
-      /**
-       * @todo Add line to onload for each helper class w/o need to define .on-load.php files.
-       *       The line should look like this:
-       *
-       *       <?php Helpers Exo::register_helper( '<helper_class_name>' );
-       */
-
-      $onload_file = $implementation->dir( '/on-load.php' );
-      if ( self::is_dev_mode() ) {
-        $old_content = is_file( $onload_file ) ? file_get_contents( $onload_file ) : false;
-        $onload_code = self::apply_instance_filters( $implementation, 'exo_generate_onload', array( "<?php\n" ) );
-        $new_content = implode( "\n", $onload_code );
-        if ( $new_content != $old_content ) {
-          /**
-           * Generate the new /on-load.php, if content has been updated.
-           */
-          file_put_contents( $onload_file, $new_content );
-        }
+      if ( ! self::is_dev_mode() ) {
+        require( $implementation->get_onload_filepath() );
       } else {
-        require( $onload_file );
+        $implementation->do_instance_action( 'exo_bypass_onload_file' );
+        $implementation->add_action( 'shutdown' );
       }
 
       $implementation->fixup_registered_helpers();
+
     }
+
   }
 
   /**
@@ -501,6 +461,9 @@ abstract class Exo_Controller_Base extends Exo_Base {
    * @throws Exception
    */
   static function __callStatic( $method_name, $args ) {
+    if ( 'register_post_type' == $method_name ) {
+      echo '';
+    }
     $value = null;
     if ( ! isset( self::$_implementations[$called_class = get_called_class()] ) ) {
       $error = true;
@@ -537,4 +500,4 @@ abstract class Exo_Controller_Base extends Exo_Base {
   }
 
 }
-Exo_Controller_Base::on_load();
+Exo_Main_Base::on_load();

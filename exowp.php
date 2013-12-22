@@ -1,6 +1,6 @@
 <?php
 
-define( 'EXO_VERSION', '0.1.6' );
+define( 'EXO_VERSION', '0.1.7' );
 
 /**
  * Initialize Exo using the 'plugins_loaded' or 'after_setup_theme' hooks, at priority 9
