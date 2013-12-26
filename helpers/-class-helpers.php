@@ -14,6 +14,26 @@ class _Exo_Helpers extends Exo_Helpers_Base {
   private static $_class_methods;
 
   /**
+   * @param string $declared_name
+   * @param bool|string|object $class_name
+   * @param mixed $default
+   *
+   * @return bool|mixed
+   */
+  static function get_class_declaration( $declared_name, $class_name = false, $default = null ) {
+    if ( ! $class_name ) {
+      $class_name = get_called_class();
+    }
+    if ( ! ( $value = self::get_class_constant( $declared_name, $class_name ) ) ) {
+      $value = self::call_class_method( $declared_name, $class_name );
+    }
+    if ( is_null( $value ) ) {
+      $value = $default;
+    }
+    return $value;
+  }
+
+  /**
    * @param bool|string $class_name
    *
    * @return bool|mixed
@@ -23,25 +43,91 @@ class _Exo_Helpers extends Exo_Helpers_Base {
   }
 
   /**
-   * @param bool|string $class_name
+   * @param string $class_name
+   *
+   * @return string
+   */
+  static function get_class_filepath( $class_name ) {
+    $reflector = new ReflectionClass( $class_name );
+    return $reflector->getFilename();
+  }
+
+  /**
+   * @param string $class_name
+   *
+   * @return string
+   */
+  static function get_class_dir( $class_name ) {
+    return dirname( self::get_class_filepath( $class_name ) );
+  }
+
+  /**
+   * Align the HTTP scheme (SSL vs. non SSL) to be consistent with incoming URL.
+   *
+   * @param $url
+   *
+   * @return mixed
+   */
+  static function maybe_adjust_http_scheme( $url ) {
+    $scheme = is_ssl() ? 'https' : 'http';
+    return preg_replace( '#^https?://#', "{$scheme}://", $url );
+  }
+
+  /**
+   * @param string $method_name
+   * @param string|object $class_name
+   * @param mixed $default
+   * @param array $args
    *
    * @return bool|mixed
    */
-  static function get_class_post_type( $class_name = false ) {
-    return self::get_class_constant( 'POST_TYPE', $class_name );
+  static function call_class_method( $method_name, $class_name, $default = null, $args = array() ) {
+//  	static $instances = array();
+    if ( is_object( $class_name ) ) {
+      $class_name = get_class( $class_name );
+    } else if ( ! is_string( $class_name ) ) {
+      $class_name = false;
+    }
+    if ( method_exists( $class_name, $method_name ) && is_subclass_of( $class_name, 'Exo_Base' ) ) {
+    	$reflector = new ReflectionMethod( $class_name, $method_name );
+    	if ( $reflector->isStatic() ) {
+    		$context = $class_name;
+      } else {
+        $constructor = new ReflectionMethod( $class_name, '__construct' );
+        if ( 0 < $constructor->getNumberOfRequiredParameters() ) {
+          $message = __( "%s::%s() method must be defined as 'static' because %s::__contruct() requires parameters.", 'exo' );
+          Exo::trigger_warning( $message, $class_name, $method_name, $class_name );
+          $context = false;
+        } else {
+          if ( ! isset( $instances[$class_name] ) ) {
+            $instances[$class_name] = new $class_name();
+          }
+          $context = $instances[$class_name];
+        }
+      }
+      if ( $context ) {
+        $result = call_user_func( array( $context, $method_name ), $args );
+      }
+    } else {
+      $result = $default;
+    }
+    return $result;
   }
 
   /**
    * @param string $constant_name
-   * @param bool|string $class_name
+   * @param bool|string|object $class_name
+   * @param mixed $default
    *
    * @return bool|mixed
    */
-  static function get_class_constant( $constant_name, $class_name = false ) {
-     if ( ! $class_name ) {
+  static function get_class_constant( $constant_name, $class_name = false, $default = null ) {
+    if ( ! $class_name ) {
       $class_name = get_called_class();
+    } else if ( is_object( $class_name ) ) {
+      $class_name = get_class( $class_name );
     }
-    return defined( $constant_ref = "{$class_name}::{$constant_name}" ) ? constant( $constant_ref ) : false;
+    return defined( $constant_ref = "{$class_name}::{$constant_name}" ) ? constant( $constant_ref ) : $default;
   }
 
   /**
@@ -75,6 +161,25 @@ class _Exo_Helpers extends Exo_Helpers_Base {
     }
     $message[] = "\n  " . __( 'Called ' . __CLASS__ . '::trigger_error()', 'exo' );
     trigger_error( implode( $message ), E_USER_WARNING );
+  }
+
+  /**
+   * Returns the implementation type as a lowercase string.
+   *
+   * Scans up the parent classes until it finds a parent class name of the form "Exo_{$implementation_type}_Base"
+   *
+   * @param bool|string $class_name
+   *
+   * @return string
+   */
+  static function get_implementation_type( $class_name = false ) {
+    $parent_class = get_parent_class( $class_name );
+    if ( $parent_class && preg_match( '#^Exo_(Library|Plugin|Theme|Application|Website)_Base$#', $parent_class, $match ) ) {
+      $implementation_type = strtolower( $match[1] );
+    } else {
+      $implementation_type = self::get_implementation_type( $parent_class );
+    }
+    return $implementation_type;
   }
 
   /**

@@ -43,57 +43,156 @@ class Exo_Implementation extends Exo_Instance_Base {
   /**
    * @var array
    */
-  private $_helper_instances = array();
+  private $_helper_callables = array();
+
+  /**
+   * @var bool|array
+   */
+  private $_helper_class_files = false;
 
   /**
    * @var array
    */
-  private $_helper_callables = array();
+  private $_required_files = array();
 
   /**
-   * @param string $dir
-   * @param array $args
+   * @return array
    */
-  function __construct( $dir, $args = array() ) {
-    parent::__construct( $args );
+  static function HOOKS() {
+    return array(
+      array( 'add_static_action', 'exo_scan_class' ),
+      array( 'add_static_action', 'exo_init' ),
+    );
+  }
+
+  /**
+   * @param string $main_class
+   * @todo Add code to initialize using on-load functionality for is_dev_mode() === false.
+   */
+  function __construct( $main_class ) {
+    parent::__construct();
+
+    $this->main_class = $main_class;
+
+    $this->_dir = _Exo_Helpers::get_class_dir( $main_class );
+
+    $this->full_prefix = _Exo_Helpers::get_class_declaration( 'FULL_PREFIX', $main_class );
+    if ( ! $this->full_prefix ) {
+      $this->full_prefix ="{$main_class}_";
+    }
+
+    $this->short_prefix = _Exo_Helpers::get_class_declaration( 'SHORT_PREFIX', $main_class );
+    if ( ! $this->short_prefix ) {
+      $this->short_prefix = strtolower( $this->_get_capital_letters( $main_class ) ) . '_';
+    }
+
+    if ( $autoloader_class = _Exo_Helpers::get_class_declaration( 'AUTOLOADER', $main_class ) ) {
+      $this->autoloader = new $autoloader_class( $this );
+    } else {
+      $this->autoloader = new Exo_Autoloader( $this );
+    }
+
+    $this->_required_files = _Exo_Helpers::get_class_declaration( 'REQUIRED_FILES', $main_class, array() );
+
+    $this->register_autoload_paths( _Exo_Helpers::get_class_declaration( 'AUTOLOAD_PATHS', $main_class, array() ) );
+
     /*
      * Capture the URI for the root of this plugin. Assumes this plugin is in a subdirectory of the site root.
      */
-    $this->_dir       = $dir;
-    $this->_uri       = home_url( preg_replace( '#^' . preg_quote( ABSPATH ) . '(.*)$#', '$1', $dir ) );
+    $this->_uri = home_url( preg_replace( '#^' . preg_quote( ABSPATH ) . '(.*)$#', '$1', $this->_dir ) );
 
     /**
      * Ensure we are using the right scheme for the incoming URL (http vs. https)
      */
-    $this->_uri       = Exo::maybe_adjust_http_scheme( $this->_uri );
+    $this->_uri = _Exo_Helpers::maybe_adjust_http_scheme( $this->_uri );
 
-    if ( class_exists( 'Exo_Autoloader' ) ) {
-      $this->autoloader = new Exo_Autoloader( $this );
-    } else {
-      $this->require_exo_autoloader();
-      $this->autoloader = new Exo_Autoloader( $this );
-      $this->register_exo_autoload_dirs();
-    }
-    $this->add_instance_action( 'exo_bypass_onload_file' );
-    $this->add_instance_filter( 'exo_onload_snippets' );
-    $this->add_instance_action( 'exo_autoloader_classes' );
+    /**
+     * Schedule to call _exo_register_helpers defined in this class but also
+     * allow someone else to add helpers to this implementation, if needed.
+     */
+    $this->add_instance_filter( 'exo_register_helpers' );
 
   }
-
   /**
-   * Action hook attached in Exo_Main_Base
+   * @return bool
    */
-  function _shutdown() {
-    $this->generate_onload_file();
+  function short_prefix() {
+    return $this->short_prefix;
   }
 
   /**
+   * @return bool
+   */
+  function full_prefix() {
+    return $this->full_prefix;
+  }
+
+  /**
+   */
+  static function _exo_init() {
+    self::_fixup_mixins();
+  }
+
+  /**
+   * Scan the list of $classes from get_declared_classes() and register it's POST_TYPE constant, if one exists
    *
+   * @param string $owner_class
+   * @note All classes must be loaded to call this.
    */
-  function generate_onload_file() {
-    $new_code = implode( "\n", $this->apply_instance_filters( 'exo_onload_snippets', array( "<?php\n" ), $this ) );
-    if ( $new_code != $this->get_onload_code() ) {
-      $this->put_onload_code( $new_code );
+  static function _exo_scan_class( $owner_class ) {
+    if ( is_subclass_of( $owner_class, 'Exo_Mixin_Base' ) ) {
+      if ( $mixins = _Exo_Helpers::get_class_constant( 'MIXINS', $owner_class, array() ) ) {
+        if ( is_string( $mixins ) ) {
+          $mixins = explode( ',', $mixins );
+        }
+        $mixins = array_map( 'trim', $mixins );
+        foreach( $mixins as $mixin_class ) {
+          if ( class_exists( $mixin_class ) ) {
+            Exo_Instance_Base::add_class_mixin( $owner_class, $mixin_class );
+          }
+        }
+      }
+    }
+  }
+  /**
+   * Return only the capital letters in a string
+   *
+   * @param $string
+   *
+   * @return bool|string
+   */
+  private function _get_capital_letters( $string ) {
+    return preg_match_all( '#([A-Z]+)#', $string, $matches ) ? implode( $matches[1] ) : false;
+  }
+
+  /**
+   * Registers all the helper class files for this implementation.
+   *
+   * @param array $helper_class_files
+   * @return array
+   */
+  function _exo_register_helpers( $helper_class_files ) {
+    foreach ( glob( $this->dir( '/helpers/*.php' ) ) as $filepath ) {
+      $class_name = $this->derive_class_name( $filepath );
+      $helper_class_files[$class_name] = realpath( $filepath );
+    }
+    return $helper_class_files;
+  }
+
+  /**
+   * Registers all the helper classes for this implementation.
+   * Called by 'init' hook priority 1 in Exo_Main_Base
+   * @param array
+   */
+  function _register_helpers( $helper_class_files ) {
+    if ( ! $this->_helper_class_files ) {
+      $this->_helper_class_files = Exo::is_dev_mode() ? $helper_class_files : true;
+      foreach ( $helper_class_files as $class_name => $filepath ) {
+        $this->register_helper( $class_name, $filepath );
+      }
+    } else {
+      $message = __( '%s::%s cannot be called more than once.', 'exo' );
+      Exo::trigger_warning( $message, $this->main_class, __FUNCTION__ );
     }
   }
 
@@ -102,85 +201,6 @@ class Exo_Implementation extends Exo_Instance_Base {
    */
   function autoload_all() {
     $this->autoloader->autoload_all();
-  }
-
-  /**
-   * @return string
-   */
-  function get_onload_filepath() {
-    return $this->dir( '/on-load.php' );
-  }
-
-  /**
-   * @return string
-   */
-  function get_onload_code() {
-    return Exo::get_file_contents( $this->get_onload_filepath() );
-  }
-
-  /**
-   * @param string $onload_code
-   * @return string
-   */
-  function put_onload_code( $onload_code ) {
-    return Exo::put_file_contents( $this->get_onload_filepath(), $onload_code );
-  }
-
-  /**
-   * Action hook to fire when runmode=='dev' to bypass the /on-load.php file.
-   *
-   * This method registers all the helper classes for this implementation.
-   * @return array
-   */
-  function _exo_bypass_onload_file() {
-    $this->_register_helpers();
-    $this->autoloader->load_onload_filepaths();
-  }
-
-  /**
-   * Registers all the helper classes for this implementation.
-   *
-   * @return array
-   */
-  private function _register_helpers() {
-    foreach ( glob( $this->dir( '/helpers/*.php' ) ) as $filepath ) {
-      $this->register_helper( $this->derive_class_name( realpath( $filepath ) ) );
-    }
-  }
-
-  /**
-   * Filter hook that adds to the array of PHP snippets that will be added to /on-load.php for this implementation.
-   *
-   * This function adds the contents of all the *.on-load.php files contained in the autoload directories.
-   *
-   * @param array $onload_snippets
-   *
-   * @return array
-   */
-  function _exo_onload_snippets( $onload_snippets ) {
-    return array_merge(
-      $onload_snippets,
-      $this->autoloader->get_onload_snippets( $this->dir() ),
-      $this->get_helper_onload_snippets()
-    );
-
-  }
-
-  function _exo_autoloader_classes() {
-    $this->autoloader->register_autoloader_classes();
-  }
-
-  /**
-   * @return array
-   */
-  function get_helper_onload_snippets() {
-    $helper_onload_snippets = array();
-    foreach ( glob( $this->dir( '/helpers/*.php' ) ) as $filepath ) {
-      $filepath = realpath( $filepath );
-      $class_name = $this->derive_class_name( $filepath );
-      $helper_onload_snippets[] = "{$this->main_class}::register_helper( '{$class_name}' );";
-    }
-    return $helper_onload_snippets;
   }
 
   /**
@@ -196,6 +216,13 @@ class Exo_Implementation extends Exo_Instance_Base {
    */
   function derive_class_name( $filepath ) {
     return $this->autoloader->derive_class_name( $filepath, $this->full_prefix );
+  }
+
+  /**
+   *
+   */
+  function _record_autoload_class_filepaths() {
+    $this->autoloader->_record_class_filepaths();
   }
 
   /**
@@ -227,47 +254,35 @@ class Exo_Implementation extends Exo_Instance_Base {
   /**
    * Fixup the registered helpers after the theme loads but before the default priority 10 hook after_setup_theme.
    */
-  function fixup_registered_helpers() {
-    foreach( $this->_helpers as $helper ) {
-      list( $class_name, $method_name, $alt_method_name ) = $helper;
-      if ( is_object( $class_name ) ) {
-        $instance = $class_name;
-        $this->_helper_instances[$class_name = get_class( $instance )] = $instance;
-      } else if ( ! isset( $this->_helper_instances[$class_name]) ) {
-        $this->_helper_instances[$class_name] = $instance = new $class_name();
-      } else {
-        $instance = $this->_helper_instances[$class_name];
-      }
-      $class_name::$main_class = $this->main_class;
-      if ( $method_name ) {
-        if ( $alt_method_name ) {
-          $this->_helper_callables[$method_name] = array( $instance, $method_name );
-        } else {
-          $this->_helper_callables[$alt_method_name] = array( $instance, $method_name );
-        }
-      } else {
-        foreach ( _Exo_Helpers::get_class_methods( $class_name, array( 'public' => true ) ) as $method_name ) {
-          $this->_helper_callables[$method_name] = array( $instance, $method_name );
-        }
+  function _fixup_registered_helpers() {
+    foreach( $this->_helpers as $helper_class => $filepath ) {
+      $helper_class::$main_class = $this->main_class;
+      $args = array(
+        'public' => true,
+        'own' => true,
+        'internal' => true,
+      );
+      foreach ( _Exo_Helpers::get_class_methods( $helper_class, $args ) as $method_name ) {
+        $this->_helper_callables[$method_name] = array( $helper_class, $method_name );
       }
     }
     /**
      * Clear this vars' memory. We don't need it anymore.
      */
     $this->_helpers = array();
-
-    do_action( 'exo_after_helper_fixup', $this->main_class );
   }
 
   /**
-   * Unregister a Helper Class or Class Method for the App object.
+   * Unregister a Helper Class for the Main class.
    *
-   * @param string|object $class_name
-   * @param bool|string $method_name
-   * @param bool|string $alt_method_name
+   * @param string $class_name
+   * @param bool|string $filepath
    */
-  function register_helper( $class_name, $method_name = false, $alt_method_name = false ) {
-    $this->_helpers[] = array( $class_name, $method_name, $alt_method_name );
+  function register_helper( $class_name, $filepath = false ) {
+    if ( ! $filepath ) {
+      $filepath = _Exo_Helpers::get_class_filepath( $class_name );
+    }
+    $this->_helpers[$class_name] = $filepath;
   }
 
   /**
@@ -297,64 +312,77 @@ class Exo_Implementation extends Exo_Instance_Base {
     return isset( $this->_helper_callables[$method_name] ) ? $this->_helper_callables[$method_name] : false;
   }
 
+
   /**
-   * Load the autoloader.
-   * Implemented as a method so it can be overridden in child class if needed.
+   * @param string $path
+   * @param bool|string $prefix
+   * @return Exo_Implementation
+   * @todo Replace register_autoload_dir() with register_autoload_path() cmpletely.
    */
-  function require_exo_autoloader() {
-    require(__DIR__ . '/../core/class-autoloader.php');
+  function register_autoload_path( $path, $prefix = false ) {
+    $dir = isset( $path[0] ) && '/' == $path[0] ? $path : $this->dir( $path );
+    if ( false === $prefix ) {
+      $prefix = $this->full_prefix;
+    }
+    $this->autoloader->register_autoload_dir( $dir, $prefix );
+    return $this;
   }
 
   /**
-   * Make the autoloadered an Exo helper to make it simplier for themers
-   * We called register_autoload_dir() directly using Exo_Autoloader for (tiny) performance improvement.
-   * Implemented as a method so it can be overridden in child class if needed.
+   * @param string $filepath
+   * @return Exo_Implementation
    */
-  function register_exo_mvc_autoload_dirs() {
-    $autoloader = $this->autoloader;
-
-    $autoloader->register_autoload_dir( __DIR__ . '/../models/post-types', 'Exo_' );
-    $autoloader->register_autoload_dir( __DIR__ . '/../models/taxonomies', 'Exo_' );
-    $autoloader->register_autoload_dir( __DIR__ . '/../mixins', 'Exo_' );
-    $autoloader->register_autoload_dir( __DIR__ . '/../collections', 'Exo_' );
-    $autoloader->register_autoload_dir( __DIR__ . '/../views', 'Exo_' );
-    // @todo More to come here...
-
+  function require_file( $filepath ) {
+    $filepath = isset( $filepath[0] ) && '/' == $filepath[0] ? $filepath : $this->dir( $filepath );
+    $this->_required_files[] = $filepath;
+    require( $filepath );
+    return $this;
   }
 
   /**
-   * Make the autoloadered an Exo helper to make it simplier for themers
-   * We called register_autoload_dir() directly using Exo_Autoloader for (tiny) performance improvement.
-   * Implemented as a method so it can be overridden in child class if needed.
+   * @param $filepaths
+   *
+   * @return $this
    */
-  function register_exo_autoload_dirs() {
-    $autoloader = $this->autoloader;
-    $autoloader->register_autoload_dir( __DIR__ . '/../base', 'Exo_' );
-    $autoloader->register_autoload_dir( __DIR__ . '/../helpers', 'Exo_' );
+  function require_files( $filepaths ) {
+    foreach( $filepaths as $filepath ) {
+      $this->require_file( $filepath );
+    }
+    return $this;
   }
 
   /**
-   * Enable MVC classes.
-   * Implemented as a method so it can be overridden in child class if needed.
+   *
    */
-  function enable_mvc() {
-    $this->require_exo_mvc_classes();
-    $this->register_exo_mvc_autoload_dirs();
+  function _load_required_files() {
+    foreach( $this->_required_files as $index => $filepath ) {
+      if ( '/' != $filepath[0] ) {
+        $this->_required_files[$index] = $filepath = $this->dir( $filepath );
+      }
+      if ( class_exists( $this->derive_class_name( $filepath ) ) ) {
+        unset( $this->_required_files[$index] );
+        continue;
+      }
+      if ( is_file( $filepath ) ) {
+        require( $filepath );
+      }
+    }
   }
 
   /**
-   * Load the MVC classes.
-   * Don't autoload these as we already know we always need these.
-   * Implemented as a method so it can be overridden in child class if needed.
+   * @param $autoload_paths
+   * @param bool $prefix
+   *
+   * @return $this
    */
-  function require_exo_mvc_classes() {
-
-    require(__DIR__ . '/../base/class-mixin-base.php');
-    require(__DIR__ . '/../base/class-model-base.php');
-    require(__DIR__ . '/../base/class-collection-base.php');
-    require(__DIR__ . '/../base/class-view-base.php');
-    require(__DIR__ . '/../base/class-post-base.php');
+  function register_autoload_paths( $autoload_paths, $prefix = false ) {
+    if ( false === $prefix ) {
+      $prefix = $this->full_prefix;
+    }
+    foreach( $autoload_paths as $autoload_path ) {
+      $this->register_autoload_path( $autoload_path, $prefix );
+    }
+    return $this;
   }
-
 
 }

@@ -5,4 +5,5 @@
  *
  */
 abstract class Exo_Application_Base extends Exo_Main_Base {
+  const DEFINES = 'application';
 }

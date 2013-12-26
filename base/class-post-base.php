@@ -11,7 +11,7 @@ abstract class Exo_Post_Base extends Exo_Model_Base {
    * The string value stored to identify a post type in the $post->post_type field.
    * Child classes should override this value.
    */
-  const POST_TYPE = null;
+  const POST_TYPE = false;
 
   /**
    * @var WP_Post
@@ -68,7 +68,7 @@ abstract class Exo_Post_Base extends Exo_Model_Base {
    * @return mixed
    */
   function get_field_intval( $field_name, $default = 0 ) {
-    return intval( $this->get_field_value( $field_name, $default = 0 ) );
+    return intval( $this->get_field_value( $field_name, $default ) );
   }
 
   /**

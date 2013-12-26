@@ -27,24 +27,6 @@ abstract class Exo_Instance_Base extends Exo_Base {
    */
   private $_mixin_instances_by_classname = array();
 
-  static function on_load() {
-    /**
-     * @todo Change these to use self::add_static_action() once we test that and get it working.
-     */
-    add_action( 'after_setup_theme', array( __CLASS__, '_after_setup_theme_9' ), 9 );
-  }
-
-  /**
-   * Fixup mixins that have been added to classes.
-   */
-  static function _after_setup_theme_9() {
-    /**
-     * @todo Add conditionals to load mixins when not in dev runmode
-     *       and to generate fixed PHP/JSON code when in dev runmode.
-     */
-    self::_exo_fixup_mixins();
-  }
-
   /**
    * @param array $args
    */
@@ -100,43 +82,50 @@ abstract class Exo_Instance_Base extends Exo_Base {
    * @param bool|string $mixin_var Variable/array element name for the mixin instance.
    */
   static function mixin( $mixin_class, $mixin_var = false ) {
-    /*
-     * @todo Test to make the the $class_name is an instance of Exo_Mixin_Base
-     * @todo derive $mixin_name from $mixin_class, but do in fixup.
-     */
+    self::add_class_mixin( get_called_class(), $mixin_class, $mixin_var );
+  }
+
+  /**
+   * @param string $owner_class Class that owners to mixin.
+   * @param string $mixin_class Class to mixin to the owner class.
+   * @param bool|string $mixin_var Variable/array element name for the mixin instance.
+   */
+  static function add_class_mixin( $owner_class, $mixin_class, $mixin_var = false ) {
     /*
      * Collect the owner and mixin class names and their property name.
+     *
+     * The class_exists() triggers the autoloader to load the class if it's not already loaded.
      */
-    self::$_mixins[get_called_class()][$mixin_class] = $mixin_var;
+    self::$_mixins[$owner_class][$mixin_class] = class_exists( $mixin_class ) ? $mixin_var : false;
   }
 
   /**
    *
    */
-  static function _exo_fixup_mixins() {
+  static function _fixup_mixins() {
     /**
      * @todo I feel this this could be done with a more efficient algorithm,
      *       but it's beyond me to improve at this point. -mikeschinkel
      */
-    self::_fixup_mixins( self::_semi_normalize_mixins() );
+    self::_normalize_mixins( self::_semi_normalize_mixins() );
     self::_assign_callable_templates();
   }
 
   /**
-   * Fixup mixins after all have been registered.
+   * Normalize mixins after all have been registered.
    *
-   * Fixup the mixins such that all classes that participate in mixins (owners and mixins) get registered in an array
-   * that for any class you could traverse the array to find it's mixins, recursively.
+   * Normalize the mixins such that all classes that participate in mixins (owners and mixins) get registered in
+   * an array that for any class you could traverse the array to find it's mixins, recursively.
    *
    * @param array $registered_mixins
    *
    * @return mixed
    */
-  static function _fixup_mixins( $registered_mixins ) {
+  static function _normalize_mixins( $registered_mixins ) {
     foreach( $registered_mixins as $class_name => $mixin ) {
       if ( is_array( $mixin ) ) {
         $var_name = false;
-        $mixins = self::_fixup_mixins( $mixin );
+        $mixins = self::_normalize_mixins( $mixin );
       } else {
         /*
          * Getting ALIAS here was done inline vs. calling Exo::get_class_alias() for performance reasons.
@@ -211,7 +200,8 @@ abstract class Exo_Instance_Base extends Exo_Base {
    * @return bool|void
    */
   function add_action( $action, $callable_or_priority = false, $priority = 10 ) {
-    return self::add_filter( $action, $callable_or_priority, $priority );
+    self::add_filter( $action, $callable_or_priority, $priority );
+    return $this;
   }
 
   /**
@@ -227,13 +217,14 @@ abstract class Exo_Instance_Base extends Exo_Base {
     } else if ( is_callable( $callable_or_priority ) ) {
       $callable = $callable_or_priority;
     } else if ( is_numeric( $callable_or_priority ) ) {
-      $callable = array( $this, $filter );
+      $callable = array( $this, "_{$filter}" );
       $priority = $callable_or_priority;
     }
     if ( 10 <> $priority && isset( $callable[1] ) && ! preg_match( "#_{$priority}$#", $callable[1] ) ) {
       $callable[1] .= "_{$priority}";
     }
-    return add_filter( $filter, $callable, $priority, 99 );
+    add_filter( $filter, $callable, $priority, 99 );
+    return $this;
   }
 
   /**
@@ -241,10 +232,11 @@ abstract class Exo_Instance_Base extends Exo_Base {
    * @param bool|int|callable $callable_or_priority
    * @param int $priority
    *
-   * @return bool|void
+   * @return Exo_Instance_Base
    */
   function add_instance_action( $action, $callable_or_priority = false, $priority = 10 ) {
-    return _Exo_Hook_Helpers::add_instance_filter( $this, $action, $callable_or_priority, $priority );
+    _Exo_Hook_Helpers::add_instance_filter( $this, $action, $callable_or_priority, $priority );
+    return $this;
   }
 
   /**
@@ -252,10 +244,11 @@ abstract class Exo_Instance_Base extends Exo_Base {
    * @param bool|int|callable $callable_or_priority
    * @param int $priority
    *
-   * @return bool|void
+   * @return Exo_Instance_Base
    */
   function add_instance_filter( $filter, $callable_or_priority = false, $priority = 10 ) {
-    return _Exo_Hook_Helpers::add_instance_filter( $this, $filter, $callable_or_priority, $priority );
+    _Exo_Hook_Helpers::add_instance_filter( $this, $filter, $callable_or_priority, $priority );
+    return $this;
   }
 
   /**
@@ -263,10 +256,11 @@ abstract class Exo_Instance_Base extends Exo_Base {
    * @param bool|int|callable $callable_or_priority
    * @param int $priority
    *
-   * @return bool|void
+   * @return Exo_Instance_Base
    */
   function remove_instance_filter( $filter, $callable_or_priority = false, $priority = 10 ) {
-    return _Exo_Hook_Helpers::remove_instance_filter( $this, $filter, $callable_or_priority, $priority );
+    _Exo_Hook_Helpers::remove_instance_filter( $this, $filter, $callable_or_priority, $priority );
+    return $this;
   }
 
   /**
@@ -274,10 +268,11 @@ abstract class Exo_Instance_Base extends Exo_Base {
    * @param bool|int|callable $callable_or_priority
    * @param int $priority
    *
-   * @return bool|void
+   * @return Exo_Instance_Base
    */
   function remove_instance_action( $action, $callable_or_priority = false, $priority = 10 ) {
-    return _Exo_Hook_Helpers::remove_instance_filter( $this, $action, $callable_or_priority, $priority );
+    _Exo_Hook_Helpers::remove_instance_filter( $this, $action, $callable_or_priority, $priority );
+    return $this;
   }
 
   /**
@@ -425,8 +420,6 @@ abstract class Exo_Instance_Base extends Exo_Base {
     return $owner;
   }
 
-
-
   /**
    * Traverse down the mixins and return the mixin that matches the passed class.
    *
@@ -453,11 +446,9 @@ abstract class Exo_Instance_Base extends Exo_Base {
    */
   private static function _assign_callable_templates() {
     foreach( self::$_mixins as $class_name => $class_info ) {
-      //self::_fixup_mixin_callable_templates( $class_name, $class_info );
       self::_fixup_callable_templates( 'mixins', $class_name, $class_info );
     }
     foreach( self::$_mixins as $class_name => $class_info ) {
-      // self::_fixup_owner_callable_templates( $class_name, $class_info );
       self::_fixup_callable_templates( 'owners', $class_name, $class_info );
     }
   }
@@ -519,4 +510,3 @@ abstract class Exo_Instance_Base extends Exo_Base {
   }
 
 }
-Exo_Instance_Base::on_load();

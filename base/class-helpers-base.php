@@ -9,5 +9,16 @@
 abstract class Exo_Helpers_Base extends Exo_Base {
   static $main_class;
 
+  /**
+   * Delegate unknown method calls up to Main class.
+   *
+   * @param string $method_name
+   * @param array $args
+   *
+   * @return mixed
+   */
+  static function __callStatic( $method_name, $args ) {
+    return call_user_func_array( array( self::$main_class, $method_name ), $args );
+  }
 
 }

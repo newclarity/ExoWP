@@ -7,40 +7,59 @@
  *
  */
 class _Exo_Hook_Helpers extends Exo_Helpers_Base {
+  /**
+   * @var array
+   */
+  private static $_hooks = array();
 
   /**
-   * @param string $class
-   * @param string $action
-   * @param bool|int|string|array $method_or_priority
-   * @param int $priority
-   *
-   * @return bool|void
+   * Collect the hooks registered for each class.
    */
-  static function add_static_action( $class, $action, $method_or_priority = false, $priority = 10 ) {
-    return self::add_static_filter( $class, $action, $method_or_priority, $priority );
+  static function _exo_scan_class_hooks( $class_name ) {
+    if ( $hooks = _Exo_Helpers::get_class_declaration( 'HOOKS', $class_name, false ) ) {
+      foreach( $hooks as $hook_args ) {
+        if ( ! preg_match( '#^add_(instance_)?(action|filter)$#', $hook_args[0] ) ) {
+          /*
+           * Filter out add_action, add_filter, add_instance_action, add_instance_filter
+           * Add the classname as the final arg.
+           */
+          array_push( $hook_args, $class_name );
+        }
+        self::$_hooks[] = $hook_args;
+      }
+    }
   }
 
   /**
-   * @param string $class
-   * @param string $filter
-   * @param bool|int|string|array $method_or_priority
-   * @param int $priority
-   *
-   * @return bool|void
+   * Add the hook registered for all classes.
    */
-  static function add_static_filter( $class, $filter, $method_or_priority = false, $priority = 10 ) {
-    if ( is_string( $method_or_priority ) ) {
-      $callable = array( $class, "_{$method_or_priority}" );
-    } else {
-      $callable = array( $class, "_{$filter}" );
-      if ( is_numeric( $method_or_priority ) ) {
-        $priority = $method_or_priority;
+  static function _add_hooks() {
+    foreach( self::$_hooks as $args ) {
+      $hook_type = array_shift( $args );
+      switch ( $hook_type ) {
+        case 'add_action':
+        case 'add_filter':
+          call_user_func_array( $hook_type, $args );
+          break;
+
+        case 'add_instance_action':
+        case 'add_instance_filter':
+          call_user_func_array( array( array_pop( $args ), $hook_type ), $args );
+          break;
+
+        case 'add_class_action':
+        case 'add_class_filter':
+        case 'add_static_action':
+        case 'add_static_filter':
+          /**
+           * Get the class name from the end and put at the beginning.
+           */
+          array_unshift( $args, array_pop( $args ) );
+          call_user_func_array( array( __CLASS__, $hook_type ), $args );
+          break;
+
       }
     }
-    if ( 10 <> $priority && isset( $callable[1] ) && ! preg_match( "#_{$priority}$#", $callable[1] ) ) {
-      $callable[1] .= "_{$priority}";
-    }
-    return add_filter( "{$class}::{$filter}()", $callable, $priority );
   }
 
   /**
@@ -64,6 +83,41 @@ class _Exo_Hook_Helpers extends Exo_Helpers_Base {
    * @return bool|void
    */
   static function add_class_filter( $class, $filter, $method_or_priority = false, $priority = 10 ) {
+    if ( is_string( $method_or_priority ) ) {
+      $callable = array( $class, "_{$method_or_priority}" );
+    } else {
+      $callable = array( $class, "_{$filter}" );
+      if ( is_numeric( $method_or_priority ) ) {
+        $priority = $method_or_priority;
+      }
+    }
+    if ( 10 <> $priority && isset( $callable[1] ) && ! preg_match( "#_{$priority}$#", $callable[1] ) ) {
+      $callable[1] .= "_{$priority}";
+    }
+    return add_filter( "{$class}::{$filter}()", $callable, $priority );
+  }
+
+  /**
+   * @param string $class
+   * @param string $action
+   * @param bool|int|string|array $method_or_priority
+   * @param int $priority
+   *
+   * @return bool|void
+   */
+  static function add_static_action( $class, $action, $method_or_priority = false, $priority = 10 ) {
+    return self::add_static_filter( $class, $action, $method_or_priority, $priority );
+  }
+
+  /**
+   * @param string $class
+   * @param string $filter
+   * @param bool|int|string|array $method_or_priority
+   * @param int $priority
+   *
+   * @return bool|void
+   */
+  static function add_static_filter( $class, $filter, $method_or_priority = false, $priority = 10 ) {
     if ( is_string( $method_or_priority ) ) {
       $callable = array( $class, "_{$method_or_priority}" );
     } else {
@@ -104,7 +158,7 @@ class _Exo_Hook_Helpers extends Exo_Helpers_Base {
     } else if ( is_callable( $callable_or_priority ) ) {
       $callable = $callable_or_priority;
     } else if ( is_numeric( $callable_or_priority ) ) {
-      $callable = array( $instance, $filter );
+      $callable = array( $instance, "_{$filter}" );
       $priority = $callable_or_priority;
     }
     if ( 10 <> $priority && isset( $callable[1] ) && ! preg_match( "#_{$priority}$#", $callable[1] ) ) {
