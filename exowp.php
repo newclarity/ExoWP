@@ -1,6 +1,6 @@
 <?php
 
-define( 'EXO_VERSION', '0.1.8' );
+define( 'EXO_VERSION', '0.1.9' );
 
 /**
  * All Exo implementations should load exo-core.php first.

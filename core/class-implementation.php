@@ -140,16 +140,14 @@ class Exo_Implementation extends Exo_Instance_Base {
    * @note All classes must be loaded to call this.
    */
   static function _exo_scan_class( $owner_class ) {
-    if ( is_subclass_of( $owner_class, 'Exo_Mixin_Base' ) ) {
-      if ( $mixins = _Exo_Helpers::get_class_constant( 'MIXINS', $owner_class, array() ) ) {
-        if ( is_string( $mixins ) ) {
-          $mixins = explode( ',', $mixins );
-        }
-        $mixins = array_map( 'trim', $mixins );
-        foreach( $mixins as $mixin_class ) {
-          if ( class_exists( $mixin_class ) ) {
-            Exo_Instance_Base::add_class_mixin( $owner_class, $mixin_class );
-          }
+    if ( $mixins = _Exo_Helpers::get_class_constant( 'MIXINS', $owner_class, array() ) ) {
+      if ( is_string( $mixins ) ) {
+        $mixins = explode( ',', $mixins );
+      }
+      $mixins = array_map( 'trim', $mixins );
+      foreach( $mixins as $mixin_class ) {
+        if ( class_exists( $mixin_class ) ) {
+          Exo_Instance_Base::add_class_mixin( $owner_class, $mixin_class );
         }
       }
     }

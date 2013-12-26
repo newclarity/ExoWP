@@ -28,6 +28,11 @@ abstract class Exo_Instance_Base extends Exo_Base {
   private $_mixin_instances_by_classname = array();
 
   /**
+   * @var array
+   */
+  private static $_callable_templates = array();
+
+  /**
    * @param array $args
    */
   function __construct( $args = array() ) {
@@ -109,6 +114,22 @@ abstract class Exo_Instance_Base extends Exo_Base {
      */
     self::_normalize_mixins( self::_semi_normalize_mixins() );
     self::_assign_callable_templates();
+    self::_merge_callable_templates();
+  }
+
+  /**
+   * Now merge both owner and mixin methods for a class into a single indexed list.
+   */
+  private static function _merge_callable_templates() {
+    foreach( self::$_mixins as $class_name => $mixin ) {
+      /**
+       * Merge in the mixin's methods to override the owner's methods.
+       */
+      self::$_callable_templates[$class_name] = array_merge(
+        $mixin->callable_templates['owners'],
+        $mixin->callable_templates['mixins']
+      );
+    }
   }
 
   /**
@@ -121,16 +142,13 @@ abstract class Exo_Instance_Base extends Exo_Base {
    *
    * @return mixed
    */
-  static function _normalize_mixins( $registered_mixins ) {
+  private static function _normalize_mixins( $registered_mixins ) {
     foreach( $registered_mixins as $class_name => $mixin ) {
       if ( is_array( $mixin ) ) {
         $var_name = false;
         $mixins = self::_normalize_mixins( $mixin );
       } else {
-        /*
-         * Getting ALIAS here was done inline vs. calling Exo::get_class_alias() for performance reasons.
-         */
-        $var_name = defined( $constant_ref = "{$class_name}::ALIAS" ) ? constant( $constant_ref ) : false;
+        $var_name = Exo::get_class_alias( $class_name );
         $mixins = array();
       }
       if ( isset( self::$_mixins[$class_name] ) && is_object( self::$_mixins[$class_name] ) ) {
@@ -333,71 +351,6 @@ abstract class Exo_Instance_Base extends Exo_Base {
       isset( self::$_mixins[$class_name]->callable_templates['owners'][$method_name] )
     );
   }
-  /**
-   * This is where the mixin magic happens!
-   *
-   * Call the mixin methods or owner methods if the mixin or owner methods exist.
-   *
-   * @param string $method_name
-   * @param array $args
-   *
-   * @return mixed
-   */
-  function __call( $method_name, $args ) {
-    $value = null;
-    if ( isset( self::$_mixins[$class_name = get_class( $this )]->callable_templates['mixins'][$method_name] ) ) {
-      /**
-       * We have a mixin instance we can delegate down to.
-       *
-       * Get the callable template, a there (3) element array with these elements:
-       *  - 0: Class name
-       *  - 1: Method name
-       *  - 2: 1 for ECHO or 0 for RETURN
-       */
-      $callable = self::$_mixins[$class_name]->callable_templates['mixins'][$method_name];
-      /**
-       * Replace the classname in element [0] with this instance's contained instance of that class.
-       */
-      $callable[0] = $this->_get_mixin_by_classname( $callable[0] );
-      /**
-       * Call the method and either echo it ('the_*()' methods) or return the value ('get_*() and other methods.)
-       */
-      if ( self::METHOD_ECHO == array_pop( $callable ) ) {
-        echo call_user_func_array( $callable, $args );
-      } else {
-        $value = call_user_func_array( $callable, $args );
-      }
-    } else if ( isset( self::$_mixins[$class_name]->callable_templates['owners'][$method_name] ) ) {
-      /**
-       * We have an owner instance we can delegate up to.
-       *
-       * Get the callable template, a there (3) element array with these elements:
-       *  - 0: Class name
-       *  - 1: Method name
-       *  - 2: 1 for ECHO or 0 for RETURN
-       */
-      $callable = self::$_mixins[$class_name]->callable_templates['owners'][$method_name];
-      /**
-       * Replace the classname in element [0] with this instance's owner[->owner] of that class.
-       */
-      $callable[0] = $this->_get_owner_by_classname( $callable[0] );
-      /**
-       * Call the method and either echo it ('the_*()' methods) or return the value ('get_*() and other methods.)
-       */
-      if ( self::METHOD_ECHO == array_pop( $callable ) ) {
-        echo call_user_func_array( $callable, $args );
-      } else {
-        $value = call_user_func_array( $callable, $args );
-      }
-    } else {
-      /**
-       * Oops. Yes, we have no bananas, we have no bananas today.
-       */
-      $message = __( 'ERROR: The class %s does not have a callable instance method %s().', 'exo' );
-      _Exo_Helpers::trigger_warning( $message, $class_name, $method_name );
-    }
-    return $value;
-  }
 
   /**
    * Traverse up the owners and return the owner that matches the passed class, or the first owner if no
@@ -507,6 +460,59 @@ abstract class Exo_Instance_Base extends Exo_Base {
       }
     }
     return self::$_mixins[$class_name]->callable_templates[$template_type];
+  }
+
+  /**
+   * This is where the mixin magic happens!
+   *
+   * Call the mixin methods or owner methods if the mixin or owner methods exist.
+   *
+   * @param string $method_name
+   * @param array $args
+   *
+   * @return mixed
+   */
+  function __call( $method_name, $args ) {
+    $value = null;
+    /**
+     * Check to see if we have a mixin method for this class.
+     */
+    if ( isset( self::$_callable_templates[$class_name][$method_name] ) ) {
+      /**
+       * We have an instance we can delegate down to or up to
+       *
+       * Get the callable template, a there (3) element array with these elements:
+       *  - 0: Class name
+       *  - 1: Method name
+       *  - 2: 1 for ECHO or 0 for RETURN
+       */
+      $callable = self::$_callable_templates[$class_name][$method_name];
+      /**
+       * Replace the classname in element [0] with this instance's contained mixin instance of that class.
+       */
+      if ( ! ( $callable[0] = $this->_get_mixin_by_classname( $callable[0] ) ) ) {
+        /**
+         * If there was not mixin then assume we have an owner's method.
+         * Replace the classname in element [0] with this instance's owner of that class [or ->owner, etc.]
+         */
+        $callable[0] = $this->_get_owner_by_classname( $callable[0] );
+      };
+      /**
+       * Call the method and either echo it ('the_*()' methods) or return the value ('get_*() and other methods.)
+       */
+      if ( self::METHOD_ECHO == array_pop( $callable ) ) {
+        echo call_user_func_array( $callable, $args );
+      } else {
+        $value = call_user_func_array( $callable, $args );
+      }
+    } else {
+      /**
+       * Oops. Yes, we have no bananas, we have no bananas today.
+       */
+      $message = __( 'ERROR: The class %s does not have a callable instance method %s().', 'exo' );
+      _Exo_Helpers::trigger_warning( $message, $class_name, $method_name );
+    }
+    return $value;
   }
 
 }
