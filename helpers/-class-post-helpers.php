@@ -178,29 +178,6 @@ class _Exo_Post_Helpers extends Exo_Helpers_Base {
     );
  }
 
-//  /**
-//   * @param int|WP_Post $post
-//   *
-//   * @return bool|mixed
-//   *
-//   * @todo Enhance this to somehow selecting a specific class based on the post info.
-//   */
-//  static function get_post_type_class( $post ) {
-//    if ( $post && is_numeric( $post ) ) {
-//      $post = get_post( $post );
-//    } else if ( $post instanceof WP_Post ) {
-//      // Nothing to do, move along, nothing to do.
-//    } else {
-//      $message = _( 'The value passed to %s::get_post_type_class() as %s is not an instance of WP_Post nor is it numeric (i.e. not a \$post ID)', 'exo' );
-//      Exo::trigger_warning( $message, get_called_class(), serialize( $post ) );
-//    }
-//    $classes = self::get_post_type_classes( $post->post_type );
-//    /*
-//     * @todo Enhance this to somehow selecting a specific class based on the post info.
-//     */
-//    return $classes[0];
-//  }
-
   /**
    * @param bool|string $class_name
    *
