@@ -133,6 +133,20 @@ abstract class Exo_Instance_Base extends Exo_Base {
   }
 
   /**
+   * @return array
+   */
+  static function _get_callable_templates() {
+    return self::$_callable_templates;
+  }
+
+  /**
+   * @param array $callable_templates
+   */
+  static function _set_callable_templates( $callable_templates ) {
+    self::$_callable_templates = $callable_templates;
+  }
+
+  /**
    * Normalize mixins after all have been registered.
    *
    * Normalize the mixins such that all classes that participate in mixins (owners and mixins) get registered in

@@ -13,21 +13,39 @@ class _Exo_Hook_Helpers extends Exo_Helpers_Base {
   private static $_hooks = array();
 
   /**
+   * @return array
+   */
+  static function _get_hooks() {
+    return self::$_hooks;
+  }
+
+  /**
+   * @param array $hooks
+   */
+  static function _set_hooks( $hooks ) {
+    self::$_hooks = $hooks;
+  }
+
+  /**
    * Collect the hooks registered for each class.
    */
-  static function _exo_scan_class_hooks( $class_name ) {
-    if ( $hooks = _Exo_Helpers::get_class_declaration( 'HOOKS', $class_name, false ) ) {
-      foreach( $hooks as $hook_args ) {
-        if ( ! preg_match( '#^add_(instance_)?(action|filter)$#', $hook_args[0] ) ) {
-          /*
-           * Filter out add_action, add_filter, add_instance_action, add_instance_filter
-           * Add the classname as the final arg.
-           */
-          array_push( $hook_args, $class_name );
+  static function _record_hooks() {
+    $self_hooks = self::$_hooks;
+    Exo::walk_declared_classes( function( $class_name ) use ( &$self_hooks ) {
+      if ( $hooks = _Exo_Helpers::get_class_declaration( 'HOOKS', $class_name, false ) ) {
+        foreach( $hooks as $hook_args ) {
+          if ( ! preg_match( '#^add_(instance_)?(action|filter)$#', $hook_args[0] ) ) {
+            /*
+             * Filter out add_action, add_filter, add_instance_action, add_instance_filter
+             * Add the classname as the final arg.
+             */
+            array_push( $hook_args, $class_name );
+          }
+          $self_hooks[] = $hook_args;
         }
-        self::$_hooks[] = $hook_args;
       }
-    }
+    });
+    self::$_hooks = $self_hooks;
   }
 
   /**

@@ -61,7 +61,6 @@ class Exo_Implementation extends Exo_Instance_Base {
   static function HOOKS() {
     return array(
       array( 'add_static_action', 'exo_scan_class' ),
-      array( 'add_static_action', 'exo_init' ),
     );
   }
 
@@ -128,30 +127,56 @@ class Exo_Implementation extends Exo_Instance_Base {
   }
 
   /**
+   * @return object
    */
-  static function _exo_init() {
-    self::_fixup_mixins();
+  function _get_bootstrap_data() {
+    return (object)array(
+      'required_files' => $this->_required_files,
+      'helper_callables' => $this->_helper_callables,
+      'autoload_classes' => $this->autoloader->_get_autoload_classes(),
+    );
+  }
+
+  /**
+   * @param object $bootstrap_data
+   */
+  function _set_bootstrap_data( $bootstrap_data ) {
+    $loaded = true;
+
+    if ( $loaded && $loaded = isset( $bootstrap_data->required_files ) ) {
+      $this->_required_files = $bootstrap_data->required_files;
+    }
+    if ( $loaded && $loaded = isset( $bootstrap_data->helper_callables ) ) {
+      $this->_helper_callables = $bootstrap_data->helper_callables;
+    }
+    if ( $loaded && $loaded = isset( $bootstrap_data->autoload_classes ) ) {
+      $this->autoloader->_set_autoload_classes( $bootstrap_data->autoload_classes );
+    }
+
+    return $loaded;
   }
 
   /**
    * Scan the list of $classes from get_declared_classes() and register it's POST_TYPE constant, if one exists
    *
-   * @param string $owner_class
    * @note All classes must be loaded to call this.
    */
-  static function _exo_scan_class( $owner_class ) {
-    if ( $mixins = _Exo_Helpers::get_class_constant( 'MIXINS', $owner_class, array() ) ) {
-      if ( is_string( $mixins ) ) {
-        $mixins = explode( ',', $mixins );
-      }
-      $mixins = array_map( 'trim', $mixins );
-      foreach( $mixins as $mixin_class ) {
-        if ( class_exists( $mixin_class ) ) {
-          Exo_Instance_Base::add_class_mixin( $owner_class, $mixin_class );
+  static function _record_mixins() {
+    Exo::walk_declared_classes( function( $owner_class ) {
+      if ( $mixins = _Exo_Helpers::get_class_constant( 'MIXINS', $owner_class, array() ) ) {
+        if ( is_string( $mixins ) ) {
+          $mixins = explode( ',', $mixins );
+        }
+        $mixins = array_map( 'trim', $mixins );
+        foreach( $mixins as $mixin_class ) {
+          if ( class_exists( $mixin_class ) ) {
+            Exo_Instance_Base::add_class_mixin( $owner_class, $mixin_class );
+          }
         }
       }
-    }
+    });
   }
+
   /**
    * Return only the capital letters in a string
    *

@@ -1,6 +1,6 @@
 <?php
 
-define( 'EXO_VERSION', '0.1.9' );
+define( 'EXO_VERSION', '0.1.10' );
 
 /**
  * All Exo implementations should load exo-core.php first.
@@ -43,6 +43,11 @@ class Exo extends Exo_Library_Base {
    * @var string
    */
   private static $_included_template;
+
+  /**
+   * @var bool
+   */
+  private static $_bootstrap_loaded = false;
 
   /**
    * Return the files required to be require()d by Exo itself.
@@ -124,8 +129,27 @@ class Exo extends Exo_Library_Base {
    */
   static function _after_setup_theme_11() {
 
-    if ( Exo::is_dev_mode() ) {
+    if ( ! Exo::is_dev_mode() ) {
+      if ( is_file( $bootstrap_php = Exo::bootstrap_filepath() ) ) {
+        require( $bootstrap_php );
+      }
+      if ( ! self::$_bootstrap_loaded ) {
+        _Exo_Helpers::trigger_warning( __( 'The Exo bootstrap file not found in theme; REGENERATING. RELOAD PAGE.', 'exo' ) );
+      } else {
+        /**
+         * @var Exo_Implementation $implementation
+         */
+        foreach( self::_get_implementations() as $implementation ) {
+          /*
+           * Scan $implementation->_required_files and load the file for each associated class.
+           */
+          $implementation->_load_required_files();
+        }
+        Exo::_add_hooks();
+      }
+    }
 
+    if ( ! self::$_bootstrap_loaded ) {
       /*
        * Convert class_names in self::$_implementations to actual Exo_Implementations.
        */
@@ -139,10 +163,10 @@ class Exo extends Exo_Library_Base {
       /**
        * @var Exo_Implementation $implementation
        */
-      foreach( self::implementations() as $implementation ) {
+      foreach( self::_get_implementations() as $implementation ) {
 
         /*
-         * Scan the autoload directories and for each file record an associated class.
+         * Scan $implementation->_required_files and load the file for each associated class.
          */
         $implementation->_load_required_files();
 
@@ -166,23 +190,99 @@ class Exo extends Exo_Library_Base {
         $implementation->autoload_all();
 
       }
-      /**
-       * Add in this hook to that _Exo_Hook_Helpers::_exo_scan_class() will
-       */
-      add_action( 'exo_scan_class_hooks', array( '_Exo_Hook_Helpers', '_exo_scan_class_hooks' ) );
-      Exo::_scan_classes( 'hooks' );
+      Exo::_record_hooks();
       Exo::_add_hooks();
-      Exo::_scan_classes();
-
+      Exo::_record_post_types();
+      Exo::_fixup_post_types();
+      Exo::_record_mixins();
+      Exo::_fixup_mixins();
+      Exo::_generate_bootstrap_file();
     }
-    foreach( self::implementations() as $implementation ) {
+    foreach( self::_get_implementations() as $implementation ) {
       /*
        * Allow something else to do something at this point.
        */
       $implementation->do_instance_action( 'exo_implementation_init' );
     }
     self::$_is_exo_init = true;
-    do_action( 'exo_init' );
+  }
+
+  /**
+   * @return string
+   */
+  static function bootstrap_filepath() {
+    return Exo::theme_dir( 'exo-bootstrap.php' );
+  }
+
+  /**
+   * @param array $bootstrap_data
+   * @return bool
+   */
+  static function _load_bootstrap_data( $bootstrap_data ) {
+    $loaded = true;
+    /**
+     * @var Exo_Implementation $implementation
+     */
+    $bootstrap_data = unserialize( $bootstrap_data );
+
+    if ( $loaded && $loaded = ( isset( $bootstrap_data->implementations ) && is_array( $bootstrap_data->implementations ) ) ) {
+      Exo_Main_Base::_set_implementations( $bootstrap_data->implementations );
+    }
+
+    if ( $loaded && $loaded = isset( $bootstrap_data->registered_hooks ) ) {
+      _Exo_Hook_Helpers::_get_hooks( $bootstrap_data->registered_hooks);
+    }
+
+    foreach( self::_get_implementations() as $implementation ) {
+      if ( $loaded && $loaded = isset( $bootstrap_data->implementations[$implementation->main_class] ) ) {
+        $loaded = $implementation->_set_bootstrap_data( $bootstrap_data->implementations[$implementation->main_class] );
+      }
+    }
+
+    if ( $loaded && $loaded = isset( $bootstrap_data->mixin_callables ) ) {
+      Exo_Instance_Base::_set_callable_templates( $bootstrap_data->mixin_callables );
+    }
+
+    if ( $loaded && $loaded = isset( $bootstrap_data->exo_post_types ) ) {
+      _Exo_Post_Helpers::_set_exo_post_types( $bootstrap_data->exo_post_types );
+    }
+
+    return self::$_bootstrap_loaded = $loaded;
+  }
+
+  /**
+   * @return object|void
+   */
+  static function _generate_bootstrap_file() {
+    $bootstrap_data = (object)array(
+      'registered_hooks' => _Exo_Hook_Helpers::_get_hooks(),
+      'mixin_callables' => Exo_Instance_Base::_get_callable_templates(),
+      'exo_post_types' => _Exo_Post_Helpers::_get_exo_post_types(),
+      'implementations' => array(),
+    );
+    /**
+     * @var Exo_Implementation $implementation
+     */
+    foreach( self::_get_implementations() as $implementation ) {
+      $bootstrap_data->implementations[$implementation->main_class] = $implementation->_get_bootstrap_data();
+    }
+    $bootstrap_data = serialize( $bootstrap_data );
+    $bootstrap_php = <<<PHP
+<?php
+if ( ! defined( 'WP_CONTENT_DIR' ) ) {
+  header( 'HTTP/1.0 404 Not Found' );
+  echo '404 File Not Found.';
+  exit;
+}
+\$_exo_bootstrap_data =<<<BOOTSTRAP_DATA
+{$bootstrap_data}
+BOOTSTRAP_DATA;
+Exo::_load_bootstrap_data( trim( \$_exo_bootstrap_data ) );
+unset( \$_exo_bootstrap_data );
+PHP;
+    if ( $bootstrap_php != Exo::get_file_contents( $filepath = Exo::bootstrap_filepath() ) ) {
+      Exo::put_file_contents( $filepath, $bootstrap_php );
+    }
   }
 
   /**
@@ -193,15 +293,14 @@ class Exo extends Exo_Library_Base {
   }
 
   /**
-   * Scan the list of $classes from get_declared_classes() and first 'exo_scan_class' hook.
+   * Walks the list of $classes from get_declared_classes() and first 'exo_scan_class' hook.
    *
-   * @param bool|string $scan_type
+   * @param callable $callback
    * @note All classes must be loaded to call this.
    */
-  static function _scan_classes( $scan_type = false ) {
-    $action = 'exo_scan_class' . ( $scan_type ? "_{$scan_type}" : false );
+  static function walk_declared_classes( $callback ) {
     foreach( get_declared_classes() as $class_name ) {
-      do_action( $action, $class_name );
+      call_user_func( $callback, $class_name );
     }
   }
 
@@ -229,7 +328,7 @@ class Exo extends Exo_Library_Base {
    * @return string
    */
   static function theme_dir( $path = false ) {
-    return $path ? "{self::$_theme_dir}/" . ltrim( $path, '/' ) : self::$_theme_dir;
+    return $path ? self::$_theme_dir . '/' . ltrim( $path, '/' ) : self::$_theme_dir;
   }
 
   /**
@@ -242,7 +341,7 @@ class Exo extends Exo_Library_Base {
    * @return string
    */
   static function theme_uri( $path = false ) {
-    return $path ? "{self::$_theme_uri}/" . ltrim( $path, '/' ) : self::$_theme_uri;
+    return $path ? self::$_theme_uri . '/' . ltrim( $path, '/' ) : self::$_theme_uri;
   }
 
   /**

@@ -101,5 +101,19 @@ class Exo_Autoloader extends Exo_Instance_Base {
     $this->_autoload_dirs = false;
   }
 
+  /**
+   * @return array
+   */
+  function _get_autoload_classes() {
+    return $this->_autoload_classes;
+  }
+
+  /**
+   * @param array $autoload_classes
+   */
+  function _set_autoload_classes( $autoload_classes ) {
+    $this->_autoload_classes = $autoload_classes;
+  }
+
 }
 

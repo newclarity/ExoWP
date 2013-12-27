@@ -104,8 +104,17 @@ abstract class Exo_Main_Base extends Exo_Base {
   /**
    * @return array
    */
-  static function implementations() {
+  static function _get_implementations() {
     return self::$_implementations;
+  }
+
+  /**
+   * @param array $implementations
+   */
+  static function _set_implementations( $implementations ) {
+    foreach( array_keys( $implementations ) as $class_name ) {
+      self::_register_implementation( $class_name );
+    }
   }
 
   /**

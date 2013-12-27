@@ -33,17 +33,15 @@ class _Exo_Post_Helpers extends Exo_Helpers_Base {
   /**
    * @return array
    */
-  static function HOOKS() {
-    return array(
-      array( 'add_static_action', 'exo_scan_class' ),
-      array( 'add_static_action', 'exo_init' ),
-    );
+  static function _get_exo_post_types() {
+    return self::$_exo_post_types;
   }
 
   /**
+   * @param array $exo_post_types
    */
-  static function _exo_init() {
-    self::_fixup_post_types();
+  static function _set_exo_post_types( $exo_post_types ) {
+    self::$_exo_post_types = $exo_post_types;
   }
 
   /**
@@ -51,21 +49,31 @@ class _Exo_Post_Helpers extends Exo_Helpers_Base {
    *
    * @note All classes must be loaded to call this.
    */
-  static function _exo_scan_class( $class_name ) {
-    if ( is_subclass_of( $class_name, 'Exo_Post_Base' ) ) {
+  static function _record_post_types() {
+    $data = array(
+      'classes_post_type' => self::$_classes_post_type,
+      'post_types_classes' => self::$_post_types_classes,
+      'exo_post_types' => self::$_exo_post_types,
+    );
+    Exo::walk_declared_classes( function( $class_name ) use ( &$data ) {
+      if ( is_subclass_of( $class_name, 'Exo_Post_Base' ) ) {
 
-      if ( $post_type = _Exo_Helpers::get_class_declaration( 'POST_TYPE', $class_name ) ) {
-        self::$_classes_post_type[$class_name] = $post_type;
-        if ( ! isset( self::$_post_types_classes[$post_type] ) ) {
-          self::$_post_types_classes[$post_type] = array( $class_name );
-        } else {
-          self::$_post_types_classes[$post_type][] = $class_name;
-        }
-        if ( $post_type_args = _Exo_Helpers::get_class_declaration( 'POST_TYPE_ARGS', $class_name ) ) {
-          self::$_exo_post_types[$class_name] = $post_type_args;
+        if ( $post_type = _Exo_Helpers::get_class_declaration( 'POST_TYPE', $class_name ) ) {
+          $data['classes_post_type'][$class_name] = $post_type;
+          if ( ! isset( $data['post_types_classes'][$post_type] ) ) {
+            $data['post_types_classes'][$post_type] = array( $class_name );
+          } else {
+            $data['post_types_classes'][$post_type][] = $class_name;
+          }
+          if ( $post_type_args = _Exo_Helpers::get_class_declaration( 'POST_TYPE_ARGS', $class_name ) ) {
+            $data['exo_post_types'][$class_name] = $post_type_args;
+          }
         }
       }
-    }
+    });
+    self::$_classes_post_type = $data['classes_post_type'];
+    self::$_post_types_classes = $data['post_types_classes'];
+    self::$_exo_post_types = $data['exo_post_types'];
   }
 
   /**
