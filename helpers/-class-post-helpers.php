@@ -45,6 +45,55 @@ class _Exo_Post_Helpers extends Exo_Helpers_Base {
   }
 
   /**
+   * @param WP_Post|Exo_Post $post_or_model
+   * @param array $args
+   * @return Exo_Post_View_Base
+   * @todo Cache views so only one is created given the same parameter and $args.
+   */
+  static function get_post_view( $post_or_model, $args = array() ) {
+    $post_model = self::get_post_model( $post_or_model, $args );
+    $args['view_class'] = isset( $args['view_class'] ) ? $args['view_class'] : $post_model->get_default_view_class();
+    $view_class = apply_filters( 'exo_post_view_class', $args['view_class'], $args );
+    return new $view_class( $post_model );
+  }
+
+  /**
+   * @param int|string|WP_Post|Exo_Post_Base $post_or_model
+   * @param array $args
+   * @return Exo_Post_Base
+   * @todo Cache models so only one is created given the same parameter and $args.
+   */
+  static function get_post_model( $post_or_model, $args = array() ) {
+    $post_model = false;
+    $post_type = false;
+    if ( is_subclass_of( $post_or_model, 'Exo_Post_Base' )  ) {
+      $post_model = $post_or_model;
+    } else if ( $post_or_model instanceof WP_Post ) {
+      $post = $post_or_model;
+      $post_type = $post->post_type;
+    } else if ( is_numeric( $post_or_model ) ) {
+      $post = get_post( $post_or_model );
+      $post_type = $post->post_type;
+    }
+    if ( $post_type ) {
+      $model_classes = apply_filters( 'exo_post_model_class', Exo::get_post_type_classes( $post_type ), $args );
+      if ( isset( $model_classes[0] ) ) {
+        $model_class = $model_classes[0];
+        $post_model = new $model_class( $post );
+      }
+    }
+    return $post_model;
+  }
+
+  /**
+   * @param array $posts
+   * @return Exo_Post_Collection_View_Base
+   */
+  static function get_post_collection_view( $posts ) {
+    return new Exo_Post_Collection_View( new Exo_Post_Collection( $posts ) );
+  }
+
+  /**
    * Scan the list of $classes from get_declared_classes() and register it's POST_TYPE constant, if one exists
    *
    * @note All classes must be loaded to call this.
@@ -66,7 +115,7 @@ class _Exo_Post_Helpers extends Exo_Helpers_Base {
             $data['post_types_classes'][$post_type][] = $class_name;
           }
           if ( $post_type_args = _Exo_Helpers::get_class_declaration( 'POST_TYPE_ARGS', $class_name ) ) {
-            $data['exo_post_types'][$class_name] = $post_type_args;
+            $data['exo_post_types'][$post_type] = $post_type_args;
           }
         }
       }
@@ -127,17 +176,15 @@ class _Exo_Post_Helpers extends Exo_Helpers_Base {
    * @param array $args
    */
   private static function _register_post_type( $post_type, $args ) {
-    if ( ! is_array( $args ) ) {
-      $args = wp_parse_args( $args, array(
-        'public' => true,
-        'publicly_queryable' => true,
-        'show_ui' => true,
-        'show_in_menu' => true,
-        'show_in_nar_menu' => true,
-        'show_in_admin_bar' => true,
-        'has_archive' => true,
-      ));
-    }
+    $args = wp_parse_args( $args, array(
+      'public' => true,
+      'publicly_queryable' => true,
+      'show_ui' => true,
+      'show_in_menu' => true,
+      'show_in_nar_menu' => true,
+      'show_in_admin_bar' => true,
+      'has_archive' => true,
+    ));
 
     if ( ! isset( $args['label'] ) ) {
       $args['label'] = preg_replace( '#^' . preg_quote( self::short_prefix() ) . '(.*)$#', '$1', "{$post_type}s" );

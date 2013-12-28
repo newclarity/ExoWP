@@ -10,6 +10,7 @@
  *
  * @mixin _Exo_Helpers
  * @mixin _Exo_Post_Helpers
+ * @mixin _Exo_Taxonomy_Helpers
  * @mixin _Exo_Meta_Helpers
  * @mixin _Exo_File_Helpers
  * @mixin _Exo_Hook_Helpers

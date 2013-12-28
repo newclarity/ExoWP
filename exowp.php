@@ -1,6 +1,6 @@
 <?php
 
-define( 'EXO_VERSION', '0.1.10' );
+define( 'EXO_VERSION', '0.1.11' );
 
 /**
  * All Exo implementations should load exo-core.php first.
@@ -48,6 +48,11 @@ class Exo extends Exo_Library_Base {
    * @var bool
    */
   private static $_bootstrap_loaded = false;
+
+  /**
+   * @var Exo_View_Base
+   */
+  private static $_queried_view;
 
   /**
    * Return the files required to be require()d by Exo itself.
@@ -455,17 +460,49 @@ PHP;
   */
   static function _template_include_9999999() {
     self::$_included_template = func_get_arg( 0 );
-
-    if ( isset( $GLOBALS['posts'] ) && is_array( $GLOBALS['posts'] ) && 1 < $GLOBALS['posts'] ) {
-      $view = new Exo_Post_Collection_View( new Exo_Post_Collection( $GLOBALS['posts'] ) );
-    } else if ( isset( $GLOBALS['post'] ) && $GLOBALS['post'] instanceof WP_Post ) {
-      $view = new Exo_Post_View( new Exo_Post( $GLOBALS['post'] ) );
+    if ( ! defined( 'EXO_DISABLE_TEMPLATE_GLOBALS' ) || ! EXO_DISABLE_TEMPLATE_GLOBALS ) {
+      extract( $GLOBALS );
     }
-    if ( $view ) {
+    if ( $view = self::get_queried_view() ) {
       require( self::$_included_template );
     }
 
     return self::implementation()->dir( 'templates/empty.php' );
+  }
+
+  /**
+   * @return Exo_Post_Base
+   */
+  static function get_queried_view() {
+    if ( ! isset( self::$_queried_view ) ) {
+      global $wp_the_query;
+
+      $queried_object = get_queried_object();
+
+      if ( $wp_the_query->is_home ) {
+        if ( get_option( 'page_on_front' ) ) {
+          $view = Exo::get_post_view( $wp_the_query->post );
+        } else {
+          $view = Exo::get_post_collection_view( $wp_the_query->posts );
+        }
+      } elseif ( $wp_the_query->is_category || $wp_the_query->is_tag || $wp_the_query->is_tax ) {
+        $view = Exo::get_taxonomy_term_view( $queried_object );
+      } elseif ( $wp_the_query->is_post_type_archive ) {
+        $view = Exo::get_post_collection_view( $queried_object->post_type );
+      } elseif ( $wp_the_query->is_posts_page ) {
+        $view = Exo::get_page_view( $queried_object );
+      } elseif ( $wp_the_query->is_singular && ! is_null( $wp_the_query->post ) ) {
+        $view = Exo::get_post_view( $queried_object );
+      } elseif ( $wp_the_query->is_author ) {
+        $view = Exo::get_author_view( $queried_object );
+      } else {
+        $view = false;
+      }
+
+      self::$_queried_view = apply_filters( 'exo_queried_view', $view );
+    }
+
+    return self::$_queried_view;
   }
 
   /**

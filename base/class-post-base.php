@@ -19,9 +19,21 @@ abstract class Exo_Post_Base extends Exo_Model_Base {
   private $_post;
 
   /**
+   * @var string
+   */
+  private $_default_view_class;
+
+  /**
    * @var WP_Query
    */
   private static $_query;
+
+  /**
+   * @return WP_Post
+   */
+  function get_post() {
+    return $this->_post;
+  }
 
   /**
    * @param int|string|WP_Post $post
@@ -47,6 +59,36 @@ abstract class Exo_Post_Base extends Exo_Model_Base {
       $post_type = constant( $constant_ref );
     }
     return $post_type;
+  }
+
+  /**
+   * Returns the default View class name for this Model.
+   *
+   * Defaults to the Model's class name plus '_View' but can be assigned with $this->set_default_view_class().
+   *
+   * @return string
+   */
+  function get_default_view_class() {
+    if ( ! isset( $this->_default_view_class ) ) {
+      if ( class_exists( $view_class = get_class( $this ) . '_View' ) ) {
+        $this->_default_view_class = $view_class;
+      } else {
+        $message = __( 'Default View class %s for Model class %s not defined.', 'exo' );
+        Exo::trigger_warning( $message, $view_class, get_class( $this ) );
+      }
+    }
+    return $this->_default_view_class;
+  }
+
+  /**
+   * Returns the default View class name for this Model.
+   *
+   * Defaults to the Model's class name plus '_View' but can be assigned with $this->set_default_view_class().
+   *
+   * @param string $view_class
+   */
+  function set_default_view_class( $view_class ) {
+    $this->_default_view_class = $view_class;
   }
 
   /**

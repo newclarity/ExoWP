@@ -21,6 +21,11 @@ abstract class Exo_View_Base extends Exo_Instance_Base {
   var $parent_view = false;
 
   /**
+   * @var string
+   */
+  private $_view_type;
+
+  /**
    * @var string Will contain the filepath of the view's current template file.
    */
   var $template_part_file;
@@ -29,6 +34,16 @@ abstract class Exo_View_Base extends Exo_Instance_Base {
    * @var int
    */
   private static $_template_part_counter = 1;
+
+  /**
+   * Returns
+   *
+   * @return bool|mixed
+   */
+  function get_model_class() {
+    $model_class = Exo::get_class_constant( 'MODEL', get_class( $this ) );
+    return $model_class ? $model_class : false;
+  }
 
   /**
    * @param bool|Exo_Model_Base $model
@@ -125,12 +140,12 @@ abstract class Exo_View_Base extends Exo_Instance_Base {
     unset( $args['container_view'] );
     $view_type = isset( $args['view_type'] ) ? $args['view_type'] : 'site';
     unset( $args['view_type'] );
-    $possibilities = $this->get_template_part_possibilities( $view_type, $args );
+    $possibilities = $this->_get_template_part_possibilities( $view, $view_type, $args );
     $view->template_part_file = locate_template( $possibilities );
     if ( ! $view->template_part_file ) {
       $message = __( 'No template found for view type "%s"', 'exo' );
       if ( 0 == count( $args ) ) {
-        $message = sprintf( "{$message}.", $view->template_part_file );
+        $message = sprintf( "{$message}.", $view_type );
       } else {
         $message .= __( ' and criteria: %s.', 'exo' );
         $message = sprintf( $message, $view_type, http_build_query( $args ) );
@@ -198,7 +213,18 @@ abstract class Exo_View_Base extends Exo_Instance_Base {
    * @return string
    */
   function get_view_type() {
-    return Exo::get_class_constant( 'VIEW_TYPE', get_class( $this ) );
+    if ( ! isset( $this->_view_type ) ) {
+      if ( ! ( $view_type = Exo::get_class_constant( 'VIEW_TYPE', get_class( $this ) ) ) ) {
+        $class_names = array_map( function( Exo_Implementation $implementation ) {
+          return $implementation->main_class;
+        }, Exo::_get_implementations() );
+        $class_names = implode( '|', $class_names );
+        $view_type = strtolower( preg_replace( "#^({$class_names})_(.+?)_View$#", '$2', get_class( $this ) ) );
+        $view_type = str_replace( '_', '-', $view_type );
+      }
+      $this->_view_type = $view_type;
+    }
+    return $this->_view_type;
   }
 
   /**
@@ -220,12 +246,22 @@ abstract class Exo_View_Base extends Exo_Instance_Base {
   }
 
   /**
+   * Meant to be overridden in child classes.
+   *
+   * @return array()
+   */
+  function get_template_part_fallbacks() {
+    return array();
+  }
+
+  /**
+   * @param Exo_View_Base $view
    * @param string $view_type
    * @param string|array $args Criteria
    * @return array
    * @throws Exception
    */
-  function get_template_part_possibilities( $view_type, $args = array() ) {
+  private function _get_template_part_possibilities( $view, $view_type, $args = array() ) {
     $args = $this->normalize_template_part_args( $args );
     ksort( $args );
     $args = array_filter( $args, function( $element ) {
@@ -320,8 +356,18 @@ abstract class Exo_View_Base extends Exo_Instance_Base {
     foreach( $possibilities as $index => $possibility )
       $possibilities[$index] = str_replace( '_', '-', $possibility );
 
+    /**
+     * Finally, add a fallback template based on the type of view.
+     */
+    $possibilities = array_merge(
+      $possibilities,
+      array_map( function( $filename ) {
+        return "template-parts/" . ltrim( $filename, '/' );
+      },
+      apply_filters( 'exo_template_part_fallbacks', $view->get_template_part_fallbacks(), $view, $view_type, $args ) )
+    );
 
-    return $possibilities;
+    return apply_filters( 'exo_template_part_possibilities', $possibilities );
   }
 
   /**
