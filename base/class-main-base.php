@@ -9,11 +9,13 @@
  * All values needed to be managed should instead be places in the instannce's class.
  *
  * @mixin _Exo_Helpers
+ * @mixin _Exo_Hook_Helpers
  * @mixin _Exo_Post_Helpers
  * @mixin _Exo_Taxonomy_Helpers
  * @mixin _Exo_Meta_Helpers
  * @mixin _Exo_File_Helpers
- * @mixin _Exo_Hook_Helpers
+ * @mixin _Exo_Array_Helpers
+ * @mixin _Exo_Mvc_Helpers
  *
  * @mixin Exo_Implementation
  * @method static string uri( string $path = false )

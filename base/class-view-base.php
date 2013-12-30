@@ -36,11 +36,11 @@ abstract class Exo_View_Base extends Exo_Instance_Base {
   private static $_template_part_counter = 1;
 
   /**
-   * Returns
+   * @param array $args
    *
    * @return bool|mixed
    */
-  function get_model_class() {
+  function get_model_class( $args = array() ) {
     $model_class = Exo::get_class_constant( 'MODEL', get_class( $this ) );
     return $model_class ? $model_class : false;
   }
@@ -214,15 +214,12 @@ abstract class Exo_View_Base extends Exo_Instance_Base {
    */
   function get_view_type() {
     if ( ! isset( $this->_view_type ) ) {
-      if ( ! ( $view_type = Exo::get_class_constant( 'VIEW_TYPE', get_class( $this ) ) ) ) {
-        $class_names = array_map( function( Exo_Implementation $implementation ) {
-          return $implementation->main_class;
-        }, Exo::_get_implementations() );
-        $class_names = implode( '|', $class_names );
-        $view_type = strtolower( preg_replace( "#^({$class_names})_(.+?)_View$#", '$2', get_class( $this ) ) );
-        $view_type = str_replace( '_', '-', $view_type );
+      if ( ! ( $view_type = Exo::get_class_constant( 'VIEW_TYPE', $view_class = get_class( $this ) ) ) ) {
+        if ( $matches = Exo::match_classname( '(.+?)_View', $view_class ) ) {
+          $view_type = str_replace( '_', '-', strtolower( $matches[1] ) );
+        }
       }
-      $this->_view_type = $view_type;
+      $this->_view_type = apply_filters( 'exo_view_type', $view_type, $view_class, $this );
     }
     return $this->_view_type;
   }

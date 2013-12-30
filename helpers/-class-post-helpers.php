@@ -52,7 +52,7 @@ class _Exo_Post_Helpers extends Exo_Helpers_Base {
    */
   static function get_post_view( $post_or_model, $args = array() ) {
     $post_model = self::get_post_model( $post_or_model, $args );
-    $args['view_class'] = isset( $args['view_class'] ) ? $args['view_class'] : $post_model->get_default_view_class();
+    $args['view_class'] = isset( $args['view_class'] ) ? $args['view_class'] : $post_model->get_view_class();
     $view_class = apply_filters( 'exo_post_view_class', $args['view_class'], $args );
     return new $view_class( $post_model );
   }
@@ -76,7 +76,7 @@ class _Exo_Post_Helpers extends Exo_Helpers_Base {
       $post_type = $post->post_type;
     }
     if ( $post_type ) {
-      $model_classes = apply_filters( 'exo_post_model_class', Exo::get_post_type_classes( $post_type ), $args );
+      $model_classes = self::get_post_model_classes( $post_type, $args );
       if ( isset( $model_classes[0] ) ) {
         $model_class = $model_classes[0];
         $post_model = new $model_class( $post );
@@ -85,12 +85,72 @@ class _Exo_Post_Helpers extends Exo_Helpers_Base {
     return $post_model;
   }
 
+
+  /**
+   * Return list of class names for Post Model classes given a $post type.
+   *
+   * @param string $post_type  // @todo Enable passing $post, $post_id or Model.
+   *
+   * @return array
+   */
+  static function get_post_model_classes( $post_type ) {
+    /**
+     * Filter class names for Post Model classes given a $post type.
+     * @param array $post_type_classes Array of post type class names, unique.
+     */
+    return apply_filters( 'exo_post_model_classes', Exo::get_post_type_classes( $post_type ) );
+  }
+
   /**
    * @param array $posts
+   * @return Exo_Post_Collection_Base
+   */
+  static function get_post_collection( $posts ) {
+    $model_class = $no_items = false;
+    if ( ! is_array( $posts ) || 0 == count( $posts ) ) {
+      $no_items = true;
+    } else {
+      $post = reset( $posts );
+      if ( $post instanceof WP_Post ) {
+        $post_types = Exo::array_collect_unique( $posts, 'post_type' );
+        /**
+         * @var WP_Post $post
+         */
+        if ( 1 < count( $post_types ) ) {
+          $message = '%s::%s not implemented yet for multiple Collection classes per Model class.';
+          Exo::trigger_warning( $message, __CLASS__, __FUNCTION__ );
+        } else if ( 0 < count( $model_classes = self::get_post_model_classes( $post->post_type ) ) ) {
+          $model_class = reset( $model_classes );
+        }
+      } else if ( $item instanceof Exo_Model_Base ) {
+        $model_class = get_class( $post );
+      }
+      if ( $no_items || ! $model_class ) {
+        $collection_class = 'Exo_Simple_Post_Collection';
+      } else {
+        $collection_classes = Exo::get_model_collection_classes( $model_class );
+        $collection_class = reset( $collection_classes );
+      }
+    }
+    $collection = new $collection_class( $posts );
+    return $collection;
+  }
+
+  /**
+   * @param array|Exo_Collection_Base $posts
    * @return Exo_Post_Collection_View_Base
    */
   static function get_post_collection_view( $posts ) {
-    return new Exo_Post_Collection_View( new Exo_Post_Collection( $posts ) );
+    if ( is_array( $posts ) ) {
+      $collection = self::get_post_collection( $posts );
+    } else if ( $posts instanceof Exo_Post_Collection_Base ) {
+      $collection = $posts;
+    } else {
+      $collection = self::get_post_collection( array() );
+    }
+    $collection_view_class = $collection->get_view_class();
+    $collection_view = new $collection_view_class( $collection );
+    return $collection_view;
   }
 
   /**

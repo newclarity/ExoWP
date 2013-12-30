@@ -14,6 +14,23 @@ class _Exo_Helpers extends Exo_Helpers_Base {
   private static $_class_methods;
 
   /**
+   * Allows for Matching a classname via a regex without having to know the class prefix.
+   *
+   * @param string $regex
+   * @param string $class_name
+   *
+   * @return array
+   */
+  static function match_classname( $regex, $class_name ) {
+    $class_names = implode( '|', Exo::array_collect_unique( Exo::_get_implementations(), 'main_class' ) );
+    if ( preg_match( "#^({$class_names})_{$regex}$#", $class_name, $matches ) ) {
+      unset( $matches[1] );  // Clear out the first match
+      $matches = array_values( $matches ); // Renumber the indexes.
+    }
+    return $matches;
+  }
+
+  /**
    * @param string $declared_name
    * @param bool|string|object $class_name
    * @param mixed $default

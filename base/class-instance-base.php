@@ -488,6 +488,7 @@ abstract class Exo_Instance_Base extends Exo_Base {
    */
   function __call( $method_name, $args ) {
     $value = null;
+    $class_name = get_class( $this );
     /**
      * Check to see if we have a mixin method for this class.
      */
