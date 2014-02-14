@@ -62,9 +62,9 @@ But don't worry, **you don't have to learn Exo's OOP all at once** _(or even at 
 The benefits to learning and using Exo when building WordPress web apps are:
 - **Handle Greater Complexity** - Exo allows an application's complexity to grow to a significantly greater level than can be realistically managed using defacto-standard approaches to building WordPress sites. 
 
-- **Reduces Duplication in Themes** - Most WordPress themes developed for highly custom sites are littered with complex business logic that is often duplicated in many places. Intermediate use of Exo can reduce the complexity, and advanced use can all but eliminated it. _(For you new-to-WordPress MVC aficionados we are talking about Separation of Concerns here.)_
+- **Reduces Duplication in Themes** - Most WordPress themes developed for highly custom sites are littered with complex business logic that is often duplicated in many places. Intermediate use of Exo can reduce the complexity, and advanced use can all but eliminate it. _(For you new-to-WordPress MVC aficionados we are talking about Separation of Concerns here.)_
 
-- **Consistency** - WordPress is notoriously inconsistent in [it's APIs](http://codex.wordpress.org/WordPress_APIs) and a fundamental principle of Exo's API is rigid consistency, while being as WordPress-ish as possible.
+- **Consistency** - WordPress is notoriously inconsistent in [its APIs](http://codex.wordpress.org/WordPress_APIs) and a fundamental principle of Exo's API is rigid consistency, while being as WordPress-ish as possible.
 
 - **Reusability** - WordPress by it's very nature makes it possible to create reusable end-user components, known as plugins and themes, but WordPress' structure does not encourage development of components that are easily reusable by developers.  Exo, by it's very nature, changes that. Development teams should be able to easily build reusable components they can leverage across many different projects. Further, if a lot of WordPress development teams choose to standardize on Exo then expect many reusable classes to emerge on Github.com.
 
