@@ -5,6 +5,10 @@ An MVC Exoskeleton for WordPress
 
 **NOTE: Exo is in Alpha and thus anything written below is subject to change prior to our 1.0 release.**
 
+##DEPRECATION NOTICE
+
+ExoWP has been deprecated in favor of [WPLib](http://github.com/wplib/).
+
 ##Overview
 ###Exo's Purpose
 Exo is an [MVC Foundation Layer](http://en.wikipedia.org/wiki/Model–view–controller) for WordPress to empower programmers to create complex web apps using WordPress without prematurely reaching the point of _"too much complexity for WordPress to handle."_
