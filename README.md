@@ -1,13 +1,13 @@
+#DEPRECATION NOTICE
+
+ExoWP has been deprecated in favor of [WPLib](http://github.com/wplib/wplib/).
+
 #ExoWP
 An MVC Exoskeleton for WordPress
 
 > _"Exo doesn't change WordPress, it just makes it stronger."_
 
 **NOTE: Exo is in Alpha and thus anything written below is subject to change prior to our 1.0 release.**
-
-##DEPRECATION NOTICE
-
-ExoWP has been deprecated in favor of [WPLib](http://github.com/wplib/wplib/).
 
 ##Overview
 ###Exo's Purpose
